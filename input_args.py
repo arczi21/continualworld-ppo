@@ -111,7 +111,7 @@ def cl_parse_args(args=None):
     parser.add_argument(
         "--cl_method",
         type=str,
-        choices=[None, "l2", "ewc", "mas", "vcl", "packnet", "agem"],
+        choices=[None, "l2", "ewc", "mas", "vcl", "packnet", "agem", "episodic_replay"],
         default=None,
         help="If None, finetuning method will be used. If one of 'l2', 'ewc', 'mas', 'vcl',"
         "'packnet', 'agem', respective method will be used.",

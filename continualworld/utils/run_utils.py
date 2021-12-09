@@ -1,6 +1,7 @@
 from typing import Type
 
 from continualworld.methods.agem import AGEM_SAC
+from continualworld.methods.episodic_replay import Episodic_SAC
 from continualworld.methods.ewc import EWC_SAC
 from continualworld.methods.l2 import L2_SAC
 from continualworld.methods.mas import MAS_SAC
@@ -24,4 +25,6 @@ def get_sac_class(cl_method: str) -> Type[SAC]:
         return PackNet_SAC
     if cl_method == "agem":
         return AGEM_SAC
+    if cl_method == "episodic_replay":
+        return Episodic_SAC
     assert False, "Bad cl_method!"
