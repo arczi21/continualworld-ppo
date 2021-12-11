@@ -47,6 +47,9 @@ class EpisodicMemory:
         self.actions_buf = np.zeros([size, act_dim], dtype=np.float32)
         self.rewards_buf = np.zeros(size, dtype=np.float32)
         self.done_buf = np.zeros(size, dtype=np.float32)
+        self.actor_dist_buf = np.zeros([size, act_dim * 2], dtype=np.float32)
+        self.critic1_pred_buf = np.zeros([size], dtype=np.float32)
+        self.critic2_pred_buf = np.zeros([size], dtype=np.float32)
         self.size, self.max_size = 0, size
 
     def store_multiple(
@@ -56,6 +59,9 @@ class EpisodicMemory:
         rewards: np.ndarray,
         next_obs: np.ndarray,
         done: np.ndarray,
+        actor_dists: np.ndarray,
+        critic1_preds: np.ndarray,
+        critic2_preds: np.ndarray,
     ) -> None:
         assert len(obs) == len(actions) == len(rewards) == len(next_obs) == len(done)
         assert self.size + len(obs) <= self.max_size
@@ -67,6 +73,9 @@ class EpisodicMemory:
         self.actions_buf[range_start:range_end] = actions
         self.rewards_buf[range_start:range_end] = rewards
         self.done_buf[range_start:range_end] = done
+        self.actor_dist_buf[range_start:range_end] = actor_dists
+        self.critic1_pred_buf[range_start:range_end] = critic1_preds
+        self.critic2_pred_buf[range_start:range_end] = critic2_preds
         self.size = self.size + len(obs)
 
     def sample_batch(self, batch_size: int) -> Dict[str, tf.Tensor]:
@@ -78,6 +87,9 @@ class EpisodicMemory:
             actions=tf.convert_to_tensor(self.actions_buf[idxs]),
             rewards=tf.convert_to_tensor(self.rewards_buf[idxs]),
             done=tf.convert_to_tensor(self.done_buf[idxs]),
+            actor_dists=tf.convert_to_tensor(self.actor_dist_buf[idxs]),
+            critic1_preds=tf.convert_to_tensor(self.critic1_pred_buf[idxs]),
+            critic2_preds=tf.convert_to_tensor(self.critic2_pred_buf[idxs]),
         )
 
 

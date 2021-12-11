@@ -122,11 +122,19 @@ def main(
             regularize_critic=regularize_critic,
             retrain_steps=packnet_retrain_steps
         )
-    elif cl_method in ["agem", "episodic_replay"]:
+    elif cl_method  == "agem":
         sac = sac_class(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
             episodic_batch_size=episodic_batch_size
+        )
+    elif cl_method  == "episodic_replay":
+        sac = sac_class(
+            **vanilla_sac_kwargs,
+            episodic_mem_per_task=episodic_mem_per_task,
+            episodic_batch_size=episodic_batch_size,
+            regularize_critic=regularize_critic,
+            cl_reg_coef=cl_reg_coef,
         )
     else:
         raise NotImplementedError("This method is not implemented")
