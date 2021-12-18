@@ -172,6 +172,11 @@ def cl_parse_args(args=None):
         help="If True, uniform exploration for start_steps steps is used only in the first task"
         "(in continual learning). Otherwise, it is used in every task",
     )
+    parser.add_argument(
+        "--episodic_memory_from_buffer",
+        type=str2bool,
+        default=True,
+    )
     return parser.parse_args(args=args)
 
 

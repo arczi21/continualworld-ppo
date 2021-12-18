@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import tensorflow as tf
 
-from continualworld.sac.replay_buffers import EpisodicMemory
+from continualworld.sac.replay_buffers import EpisodicMemory, ReplayBuffer
 from continualworld.sac.sac import SAC
 
 
@@ -11,7 +11,8 @@ class Episodic_SAC(SAC):
     def __init__(
         self,
         episodic_mem_per_task: int = 0, episodic_batch_size: int = 0,
-        regularize_critic=False, cl_reg_coef=0., **vanilla_sac_kwargs
+        regularize_critic=False, cl_reg_coef=0., episodic_memory_from_buffer: bool = True,
+        **vanilla_sac_kwargs
     ):
         """Episodic replay.
 
@@ -24,6 +25,7 @@ class Episodic_SAC(SAC):
         self.episodic_batch_size = episodic_batch_size
         self.regularize_critic = regularize_critic
         self.cl_reg_coef = cl_reg_coef
+        self.episodic_memory_from_buffer = episodic_memory_from_buffer
 
         episodic_mem_size = self.episodic_mem_per_task * self.env.num_envs
         self.episodic_memory = EpisodicMemory(
@@ -111,10 +113,37 @@ class Episodic_SAC(SAC):
           final_grads += [(new_grad + ref_grad) / 2]
         return final_grads
 
+    def gather_buffer(self, task_idx):
+        tmp_replay_buffer = ReplayBuffer(
+            obs_dim=self.obs_dim, act_dim=self.act_dim, size=self.episodic_mem_per_task
+        )
+
+        obs = self.env.envs[task_idx].reset()
+        episode_len = 0
+        for step_idx in range(self.episodic_mem_per_task):
+            action = self.get_action(tf.convert_to_tensor(obs), deterministic=False)
+            next_obs, reward, done, info = self.env.envs[task_idx].step(action)
+
+            episode_len += 1
+            done_to_store = done
+            if episode_len == self.max_episode_len or info.get("TimeLimit.truncated"):
+                done_to_store = False
+            tmp_replay_buffer.store(obs, action, reward, next_obs, done_to_store)
+
+            if done:
+                obs = self.env.envs[task_idx].reset()
+                episode_len = 0
+            else:
+                obs = next_obs
+        return tmp_replay_buffer.sample_batch(self.episodic_mem_per_task)
+
     # TODO: on_task_end?
     def on_task_start(self, current_task_idx: int) -> None:
         if current_task_idx > 0:
-            new_episodic_mem = self.replay_buffer.sample_batch(self.episodic_mem_per_task)
+            if self.episodic_memory_from_buffer:
+                new_episodic_mem = self.replay_buffer.sample_batch(self.episodic_mem_per_task)
+            else:
+                new_episodic_mem = self.gather_buffer(current_task_idx - 1)
 
             mu, log_std, _, _ = self.actor(new_episodic_mem["obs"])
             new_episodic_mem["actor_dists"] = np.concatenate([mu.numpy(), log_std.numpy()], -1)

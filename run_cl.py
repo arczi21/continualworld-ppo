@@ -42,6 +42,7 @@ def main(
     hide_task_id: bool,
     clipnorm: float,
     agent_policy_exploration: bool,
+    episodic_memory_from_buffer: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -133,6 +134,7 @@ def main(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
             episodic_batch_size=episodic_batch_size,
+            episodic_memory_from_buffer=episodic_memory_from_buffer,
             regularize_critic=regularize_critic,
             cl_reg_coef=cl_reg_coef,
         )
