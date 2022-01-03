@@ -43,6 +43,7 @@ def main(
     clipnorm: float,
     agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
+    oracle_mode: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -123,13 +124,13 @@ def main(
             regularize_critic=regularize_critic,
             retrain_steps=packnet_retrain_steps
         )
-    elif cl_method  == "agem":
+    elif cl_method == "agem":
         sac = sac_class(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
             episodic_batch_size=episodic_batch_size
         )
-    elif cl_method  == "episodic_replay":
+    elif cl_method == "episodic_replay":
         sac = sac_class(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
@@ -137,6 +138,7 @@ def main(
             episodic_memory_from_buffer=episodic_memory_from_buffer,
             regularize_critic=regularize_critic,
             cl_reg_coef=cl_reg_coef,
+            oracle_mode=oracle_mode,
         )
     else:
         raise NotImplementedError("This method is not implemented")

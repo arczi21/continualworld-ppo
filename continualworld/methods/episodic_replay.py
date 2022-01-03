@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import tensorflow as tf
 
+from continualworld.envs import CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, MW_OBS_LEN, TRIPLE_FT
 from continualworld.sac.replay_buffers import EpisodicMemory, ReplayBuffer
 from continualworld.sac.sac import SAC
 
@@ -12,6 +13,7 @@ class Episodic_SAC(SAC):
         self,
         episodic_mem_per_task: int = 0, episodic_batch_size: int = 0,
         regularize_critic=False, cl_reg_coef=0., episodic_memory_from_buffer: bool = True,
+        oracle_mode=False,
         **vanilla_sac_kwargs
     ):
         """Episodic replay.
@@ -32,6 +34,18 @@ class Episodic_SAC(SAC):
             obs_dim=self.obs_dim, act_dim=self.act_dim, size=episodic_mem_size
         )
 
+        self.oracle_mode = oracle_mode
+        if self.oracle_mode:
+            if self.num_tasks == 10:
+                self.oracle_matrix = tf.convert_to_tensor(CW10_FT_TRUNCATED, tf.float32)
+            elif self.num_tasks == 20:
+                self.oracle_matrix = tf.convert_to_tensor(CW20_FT_TRUNCATED, tf.float32)
+            elif self.num_tasks == 3:
+                self.oracle_matrix = tf.convert_to_tensor(TRIPLE_FT, tf.float32)
+            else:
+                raise NotImplementedError
+
+
     def kl_divergence(self, first_mu, first_logstd, second_mu, second_logstd):
         eps = 1e-6
         first_var = (tf.exp(first_logstd) + eps) ** 2
@@ -48,23 +62,41 @@ class Episodic_SAC(SAC):
             actions: tf.Tensor,
             target_actor_dists: tf.Tensor,
             target_critic1_preds: tf.Tensor,
-            target_critic2_preds: tf.Tensor):
+            target_critic2_preds: tf.Tensor,
+            current_task_idx: int):
 
         target_mu = target_actor_dists[:, :self.act_dim]
         target_logstd = target_actor_dists[:, self.act_dim:]
 
+        if self.oracle_mode:
+            task_ids = obs[:, MW_OBS_LEN:]
+            current_col = self.oracle_matrix[:, current_task_idx]
+            example_weights = tf.linalg.matvec(task_ids, current_col)
+
         with tf.GradientTape(persistent=True) as g:
             mu, logstd, _, _ = self.actor(obs)
 
-            actor_loss = tf.reduce_mean(self.kl_divergence(target_mu, target_logstd, mu, logstd))
+            actor_loss_per_example = self.kl_divergence(target_mu, target_logstd, mu, logstd)
+            if self.oracle_mode:
+                actor_loss_per_example *= example_weights
+
+            # TODO: weighting
+            actor_loss = tf.reduce_mean(actor_loss_per_example)
             actor_loss *= self.cl_reg_coef
 
             if self.regularize_critic:
                 critic1_pred = self.critic1(obs, actions)
                 critic2_pred = self.critic2(obs, actions)
 
-                critic1_loss = tf.reduce_mean((critic1_pred - target_critic1_preds) ** 2)
-                critic2_loss = tf.reduce_mean((critic2_pred - target_critic2_preds) ** 2)
+                critic1_loss_per_example = (critic1_pred - target_critic1_preds) ** 2
+                critic2_loss_per_example = (critic2_pred - target_critic2_preds) ** 2
+
+                if self.oracle_mode:
+                    critic1_loss_per_example *= example_weights
+                    critic2_loss_per_example *= example_weights
+
+                critic1_loss = tf.reduce_mean(critic1_loss_per_example)
+                critic2_loss = tf.reduce_mean(critic2_loss_per_example)
                 critic_loss = critic1_loss + critic2_loss
                 critic_loss *= self.cl_reg_coef
 
@@ -94,6 +126,7 @@ class Episodic_SAC(SAC):
                 target_actor_dists=episodic_batch["actor_dists"],
                 target_critic1_preds=episodic_batch["critic1_preds"],
                 target_critic2_preds=episodic_batch["critic2_preds"],
+                current_task_idx=current_task_idx,
             )
 
             final_actor_gradients = self.merge_gradients(actor_gradients, ref_actor_gradients)

@@ -177,6 +177,12 @@ def cl_parse_args(args=None):
         type=str2bool,
         default=True,
     )
+
+    parser.add_argument(
+        "--oracle_mode",
+        type=str2bool,
+        default=False,
+    )
     return parser.parse_args(args=args)
 
 
