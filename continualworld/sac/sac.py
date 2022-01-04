@@ -549,12 +549,30 @@ class SAC:
             # Until start_steps have elapsed, randomly sample actions
             # from a uniform distribution for better exploration. Afterwards,
             # use the learned policy.
-            if current_task_timestep > self.start_steps or (
-                self.agent_policy_exploration and current_task_idx > 0
-            ):
-                action = self.get_action(tf.convert_to_tensor(obs))
+
+            if current_task_timestep <= self.start_steps:
+                # TODO: dirty, bad, very not good hack for triplets.
+                start_condition = (current_task_idx > 2) if self.num_tasks == 3 else (current_task_idx > 0)
+                if self.agent_policy_exploration and start_condition:
+                    num_heads = self.actor.num_heads
+                    modified_obs = obs.copy()
+                    # Change the one-hot representing the task idx, so that
+                    # the network uses the previous head to act.
+                    if num_heads > 1:
+                        one_hot = np.zeros(num_heads)
+                        if self.oracle_mode:
+                            source_policy_idx = np.argmax(self.oracle_matrix[:current_task_idx, current_task_idx])
+                        else:
+                            source_policy_idx = current_task_idx - 1
+
+                        one_hot[source_policy_idx] = 1.
+                        modified_obs[-num_heads:] = one_hot
+                    action = self.get_action(tf.convert_to_tensor(modified_obs))
+                else:
+                    action = self.env.action_space.sample()
             else:
-                action = self.env.action_space.sample()
+                action = self.get_action(tf.convert_to_tensor(obs))
+
 
             # Step the env
             next_obs, reward, done, info = self.env.step(action)
