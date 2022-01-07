@@ -68,10 +68,13 @@ class Episodic_SAC(SAC):
         target_mu = target_actor_dists[:, :self.act_dim]
         target_logstd = target_actor_dists[:, self.act_dim:]
 
+        # TODO: do this through subsampling instead importance sampling?
         if self.oracle_mode:
             task_ids = obs[:, MW_OBS_LEN:]
             current_col = self.oracle_matrix[:, current_task_idx]
-            example_weights = tf.linalg.matvec(task_ids, current_col)
+            normalized_current_col = current_col / tf.reduce_sum(current_col[:current_task_idx])
+            normalized_current_col *= current_task_idx
+            example_weights = tf.linalg.matvec(task_ids, normalized_current_col)
 
         with tf.GradientTape(persistent=True) as g:
             mu, logstd, _, _ = self.actor(obs)

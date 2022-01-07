@@ -560,13 +560,10 @@ class SAC:
                     # the network uses the previous head to act.
                     if num_heads > 1:
                         one_hot = np.zeros(num_heads)
-                        if self.oracle_mode:
-                            source_policy_idx = np.argmax(self.oracle_matrix[:current_task_idx, current_task_idx])
-                        else:
-                            source_policy_idx = current_task_idx - 1
-
+                        source_policy_idx = np.argmax(self.oracle_matrix[:current_task_idx, current_task_idx])
                         one_hot[source_policy_idx] = 1.
                         modified_obs[-num_heads:] = one_hot
+
                     action = self.get_action(tf.convert_to_tensor(modified_obs))
                 else:
                     action = self.env.action_space.sample()
