@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import tensorflow as tf
 
+from continualworld.envs import CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, MW_OBS_LEN, TRIPLE_FT
 from continualworld.sac import models
 from continualworld.sac.models import PopArtMlpCritic
 from continualworld.sac.replay_buffers import ReplayBuffer, ReservoirReplayBuffer
@@ -199,6 +200,16 @@ class SAC:
                 self.target_entropy = (
                     np.prod(env.action_space.shape).astype(np.float32) * target_1d_entropy
                 )
+
+        if self.agent_policy_exploration:
+            if self.num_tasks == 10:
+                self.agent_oracle_matrix = tf.convert_to_tensor(CW10_FT_TRUNCATED, tf.float32)
+            elif self.num_tasks == 20:
+                self.agent_oracle_matrix = tf.convert_to_tensor(CW20_FT_TRUNCATED, tf.float32)
+            elif self.num_tasks == 3:
+                self.agent_oracle_matrix = tf.convert_to_tensor(TRIPLE_FT, tf.float32)
+            else:
+                raise NotImplementedError
 
     def adjust_gradients(
         self,
@@ -560,7 +571,8 @@ class SAC:
                     # the network uses the previous head to act.
                     if num_heads > 1:
                         one_hot = np.zeros(num_heads)
-                        source_policy_idx = np.argmax(self.oracle_matrix[:current_task_idx, current_task_idx])
+                        source_policy_idx = np.argmax(
+                                self.agent_oracle_matrix[:current_task_idx, current_task_idx])
                         one_hot[source_policy_idx] = 1.
                         modified_obs[-num_heads:] = one_hot
 
