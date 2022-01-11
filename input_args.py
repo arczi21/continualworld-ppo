@@ -183,6 +183,19 @@ def cl_parse_args(args=None):
         type=str2bool,
         default=False,
     )
+
+    parser.add_argument(
+        "--oracle_sampling",
+        type=str2bool,
+        default=False,
+    )
+
+    parser.add_argument(
+        "--oracle_clamp",
+        type=float,
+        default=0.,
+    )
+
     return parser.parse_args(args=args)
 
 

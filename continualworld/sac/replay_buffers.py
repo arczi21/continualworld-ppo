@@ -1,8 +1,10 @@
 import random
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import tensorflow as tf
+
+from continualworld.envs import MW_OBS_LEN
 
 
 class ReplayBuffer:
@@ -50,6 +52,7 @@ class EpisodicMemory:
         self.actor_dist_buf = np.zeros([size, act_dim * 2], dtype=np.float32)
         self.critic1_pred_buf = np.zeros([size], dtype=np.float32)
         self.critic2_pred_buf = np.zeros([size], dtype=np.float32)
+        self.task_id_buf = np.zeros([size], dtype=int)
         self.size, self.max_size = 0, size
 
     def store_multiple(
@@ -76,11 +79,18 @@ class EpisodicMemory:
         self.actor_dist_buf[range_start:range_end] = actor_dists
         self.critic1_pred_buf[range_start:range_end] = critic1_preds
         self.critic2_pred_buf[range_start:range_end] = critic2_preds
+        self.task_id_buf[range_start:range_end] = obs[:, MW_OBS_LEN:].argmax(-1)
         self.size = self.size + len(obs)
 
-    def sample_batch(self, batch_size: int) -> Dict[str, tf.Tensor]:
+    def sample_batch(self, batch_size: int, task_weights: Optional[np.ndarray] = None) -> Dict[str, tf.Tensor]:
         batch_size = min(batch_size, self.size)
-        idxs = np.random.choice(self.size, size=batch_size, replace=False)
+        if task_weights is not None:
+            task_ids = self.task_id_buf[:self.size]
+            example_weights = task_weights[task_ids]
+            example_weights /= example_weights.sum()
+            idxs = np.random.choice(self.size, size=batch_size, replace=False, p=example_weights)
+        else:
+            idxs = np.random.choice(self.size, size=batch_size, replace=False)
         return dict(
             obs=tf.convert_to_tensor(self.obs_buf[idxs]),
             next_obs=tf.convert_to_tensor(self.next_obs_buf[idxs]),

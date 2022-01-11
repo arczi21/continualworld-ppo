@@ -12,8 +12,9 @@ class Episodic_SAC(SAC):
     def __init__(
         self,
         episodic_mem_per_task: int = 0, episodic_batch_size: int = 0,
-        regularize_critic=False, cl_reg_coef=0., episodic_memory_from_buffer: bool = True,
-        oracle_mode=False,
+        regularize_critic: bool = False, cl_reg_coef: float = 0.,
+        episodic_memory_from_buffer: bool = True, oracle_mode: bool = False,
+        oracle_sampling=False, oracle_clamp: float = 0.,
         **vanilla_sac_kwargs
     ):
         """Episodic replay.
@@ -23,6 +24,9 @@ class Episodic_SAC(SAC):
           episodic_batch_size: Minibatch size to compute additional loss.
         """
         super().__init__(**vanilla_sac_kwargs)
+        if oracle_sampling:
+            assert oracle_mode, "Oracle sampling does not work without oracle mode"
+
         self.episodic_mem_per_task = episodic_mem_per_task
         self.episodic_batch_size = episodic_batch_size
         self.regularize_critic = regularize_critic
@@ -35,16 +39,21 @@ class Episodic_SAC(SAC):
         )
 
         self.oracle_mode = oracle_mode
+        self.oracle_sampling = oracle_sampling
+        self.oracle_clamp = oracle_clamp
+
         if self.oracle_mode:
             if self.num_tasks == 10:
-                self.oracle_matrix = tf.convert_to_tensor(CW10_FT_TRUNCATED, tf.float32)
+                oracle_matrix_np = CW10_FT_TRUNCATED
             elif self.num_tasks == 20:
-                self.oracle_matrix = tf.convert_to_tensor(CW20_FT_TRUNCATED, tf.float32)
+                oracle_matrix_np = CW20_FT_TRUNCATED
             elif self.num_tasks == 3:
-                self.oracle_matrix = tf.convert_to_tensor(TRIPLE_FT, tf.float32)
+                oracle_matrix_np = TRIPLE_FT
             else:
                 raise NotImplementedError
-
+            oracle_matrix_np = np.clip(oracle_matrix_np, oracle_clamp, np.inf)
+            self.oracle_matrix_np = oracle_matrix_np
+            self.oracle_matrix = tf.convert_to_tensor(oracle_matrix_np, tf.float32)
 
     def kl_divergence(self, first_mu, first_logstd, second_mu, second_logstd):
         eps = 1e-6
@@ -69,18 +78,18 @@ class Episodic_SAC(SAC):
         target_logstd = target_actor_dists[:, self.act_dim:]
 
         # TODO: do this through subsampling instead importance sampling?
-        if self.oracle_mode:
-            task_ids = obs[:, MW_OBS_LEN:]
+        if self.oracle_mode and not self.oracle_sampling:
             current_col = self.oracle_matrix[:, current_task_idx]
             normalized_current_col = current_col / tf.reduce_sum(current_col[:current_task_idx])
             normalized_current_col *= current_task_idx
+            task_ids = obs[:, MW_OBS_LEN:]
             example_weights = tf.linalg.matvec(task_ids, normalized_current_col)
 
         with tf.GradientTape(persistent=True) as g:
             mu, logstd, _, _ = self.actor(obs)
 
             actor_loss_per_example = self.kl_divergence(target_mu, target_logstd, mu, logstd)
-            if self.oracle_mode:
+            if self.oracle_mode and not self.oracle_sampling:
                 actor_loss_per_example *= example_weights
 
             # TODO: weighting
@@ -94,7 +103,7 @@ class Episodic_SAC(SAC):
                 critic1_loss_per_example = (critic1_pred - target_critic1_preds) ** 2
                 critic2_loss_per_example = (critic2_pred - target_critic2_preds) ** 2
 
-                if self.oracle_mode:
+                if self.oracle_mode and not self.oracle_sampling:
                     critic1_loss_per_example *= example_weights
                     critic2_loss_per_example *= example_weights
 
@@ -182,15 +191,22 @@ class Episodic_SAC(SAC):
                 new_episodic_mem = self.gather_buffer(current_task_idx - 1)
 
             mu, log_std, _, _ = self.actor(new_episodic_mem["obs"])
-            new_episodic_mem["actor_dists"] = np.concatenate([mu.numpy(), log_std.numpy()], -1)
             critic1_preds = self.critic1(new_episodic_mem["obs"], new_episodic_mem["actions"])
-            new_episodic_mem["critic1_preds"] = critic1_preds.numpy()
             critic2_preds = self.critic2(new_episodic_mem["obs"], new_episodic_mem["actions"])
+
+            new_episodic_mem = {k: v.numpy() for k, v in new_episodic_mem.items()}
+            new_episodic_mem["actor_dists"] = np.concatenate([mu.numpy(), log_std.numpy()], -1)
+            new_episodic_mem["critic1_preds"] = critic1_preds.numpy()
             new_episodic_mem["critic2_preds"] = critic2_preds.numpy()
 
             self.episodic_memory.store_multiple(**new_episodic_mem)
 
     def get_episodic_batch(self, current_task_idx: int) -> Optional[Dict[str, tf.Tensor]]:
         if current_task_idx > 0:
-            return self.episodic_memory.sample_batch(self.episodic_batch_size)
+            if self.oracle_sampling:
+                return self.episodic_memory.sample_batch(
+                        self.episodic_batch_size,
+                        task_weights=self.oracle_matrix_np[:, current_task_idx])
+            else:
+                return self.episodic_memory.sample_batch(self.episodic_batch_size)
         return None

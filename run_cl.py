@@ -44,6 +44,8 @@ def main(
     agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
     oracle_mode: bool,
+    oracle_sampling: bool,
+    oracle_clamp: float,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -139,6 +141,8 @@ def main(
             regularize_critic=regularize_critic,
             cl_reg_coef=cl_reg_coef,
             oracle_mode=oracle_mode,
+            oracle_sampling=oracle_sampling,
+            oracle_clamp=oracle_clamp,
         )
     else:
         raise NotImplementedError("This method is not implemented")
