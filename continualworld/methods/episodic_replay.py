@@ -3,7 +3,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import tensorflow as tf
 
-from continualworld.envs import CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, MW_OBS_LEN, TRIPLE_FT
+from continualworld.envs import (CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, CW20_REUSE_TASK_FT,
+                                 MW_OBS_LEN, TRIPLE_FT)
 from continualworld.sac.replay_buffers import EpisodicMemory, ReplayBuffer
 from continualworld.sac.sac import SAC
 
@@ -46,7 +47,10 @@ class Episodic_SAC(SAC):
             if self.num_tasks == 10:
                 oracle_matrix_np = CW10_FT_TRUNCATED
             elif self.num_tasks == 20:
-                oracle_matrix_np = CW20_FT_TRUNCATED
+                if self.oracle_reuse_task:
+                    oracle_matrix_np = CW20_REUSE_TASK_FT
+                else:
+                    oracle_matrix_np = CW20_FT_TRUNCATED
             elif self.num_tasks == 3:
                 oracle_matrix_np = TRIPLE_FT
             else:

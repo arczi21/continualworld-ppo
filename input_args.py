@@ -195,6 +195,23 @@ def cl_parse_args(args=None):
         type=float,
         default=0.,
     )
+    parser.add_argument(
+        "--oracle_reuse_task",
+        type=str2bool,
+        default=False,
+    )
+
+    parser.add_argument(
+        "--start_steps",
+        type=int,
+        default=10_000,
+    )
+
+    parser.add_argument(
+        "--start_steps_second_half",
+        type=int,
+        default=10_000,
+    )
 
     return parser.parse_args(args=args)
 

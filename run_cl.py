@@ -46,6 +46,9 @@ def main(
     oracle_mode: bool,
     oracle_sampling: bool,
     oracle_clamp: float,
+    oracle_reuse_task: bool,
+    start_steps: int,
+    start_steps_second_half: int,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -103,6 +106,9 @@ def main(
         "gamma": gamma,
         "target_output_std": target_output_std,
         "agent_policy_exploration": agent_policy_exploration,
+        "oracle_reuse_task": oracle_reuse_task,
+        "start_steps": start_steps,
+        "start_steps_second_half": start_steps_second_half,
     }
 
     sac_class = get_sac_class(cl_method)

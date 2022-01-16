@@ -41,6 +41,11 @@ CW20_FT = np.concatenate([CW10_FT, CW10_FT], 0)
 CW20_FT = np.concatenate([CW20_FT, CW20_FT], 1)
 CW20_FT_TRUNCATED = np.clip(CW20_FT, 0., np.inf)
 
+CW20_REUSE_TASK_FIRST_HALF = np.concatenate([CW10_FT, CW10_FT], 0)
+CW20_REUSE_TASK_SECOND_HALF = np.concatenate([np.identity(10), np.zeros([10, 10])], 0)
+CW20_REUSE_TASK_FT = np.concatenate([CW20_REUSE_TASK_FIRST_HALF, CW20_REUSE_TASK_SECOND_HALF], 1)
+
+
 TRIPLE_FT = np.array(
         [[0., 1., 1.],
          [0., 0., 0.],
