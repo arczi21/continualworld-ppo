@@ -212,6 +212,11 @@ def cl_parse_args(args=None):
         type=int,
         default=10_000,
     )
+    parser.add_argument(
+        "--oracle_softmax_mode",
+        type=str2bool,
+        default=False,
+    )
 
     return parser.parse_args(args=args)
 

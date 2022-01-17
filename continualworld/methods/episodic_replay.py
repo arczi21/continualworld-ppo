@@ -1,9 +1,10 @@
+from scipy.special import softmax
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
 
-from continualworld.envs import (CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, CW20_REUSE_TASK_FT,
+from continualworld.envs import (CW10_FT, CW20_FT, CW20_REUSE_TASK_FT,
                                  MW_OBS_LEN, TRIPLE_FT)
 from continualworld.sac.replay_buffers import EpisodicMemory, ReplayBuffer
 from continualworld.sac.sac import SAC
@@ -15,7 +16,7 @@ class Episodic_SAC(SAC):
         episodic_mem_per_task: int = 0, episodic_batch_size: int = 0,
         regularize_critic: bool = False, cl_reg_coef: float = 0.,
         episodic_memory_from_buffer: bool = True, oracle_mode: bool = False,
-        oracle_sampling=False, oracle_clamp: float = 0.,
+        oracle_sampling=False, oracle_clamp: float = 0., oracle_softmax_mode: bool = False,
         **vanilla_sac_kwargs
     ):
         """Episodic replay.
@@ -42,20 +43,23 @@ class Episodic_SAC(SAC):
         self.oracle_mode = oracle_mode
         self.oracle_sampling = oracle_sampling
         self.oracle_clamp = oracle_clamp
+        self.oracle_softmax_mode = oracle_softmax_mode
+        print("ORACLE SOFT MAX MODE", self.oracle_softmax_mode)
+        if self.oracle_softmax_mode:
+            assert self.oracle_clamp > 0.
 
         if self.oracle_mode:
             if self.num_tasks == 10:
-                oracle_matrix_np = CW10_FT_TRUNCATED
+                oracle_matrix_np = CW10_FT
             elif self.num_tasks == 20:
                 if self.oracle_reuse_task:
                     oracle_matrix_np = CW20_REUSE_TASK_FT
                 else:
-                    oracle_matrix_np = CW20_FT_TRUNCATED
+                    oracle_matrix_np = CW20_FT
             elif self.num_tasks == 3:
                 oracle_matrix_np = TRIPLE_FT
             else:
                 raise NotImplementedError
-            oracle_matrix_np = np.clip(oracle_matrix_np, oracle_clamp, np.inf)
             self.oracle_matrix_np = oracle_matrix_np
             self.oracle_matrix = tf.convert_to_tensor(oracle_matrix_np, tf.float32)
 
@@ -84,8 +88,17 @@ class Episodic_SAC(SAC):
         # TODO: do this through subsampling instead importance sampling?
         if self.oracle_mode and not self.oracle_sampling:
             current_col = self.oracle_matrix[:, current_task_idx]
-            normalized_current_col = current_col / tf.reduce_sum(current_col[:current_task_idx])
-            normalized_current_col *= current_task_idx
+            if self.oracle_softmax_mode: 
+                softmax_result = tf.nn.softmax(current_col[:current_task_idx] / self.oracle_clamp)
+                # TODO: horrible hack
+                normalized_current_col = tf.concat(
+                        [softmax_result, tf.zeros(self.num_tasks - current_task_idx)],
+                        axis=0)
+                normalized_current_col *= current_task_idx
+            else:
+                current_col = tf.clip_by_value(current_col, self.oracle_clamp, 1000.)
+                normalized_current_col = current_col / tf.reduce_sum(current_col[:current_task_idx])
+                normalized_current_col *= current_task_idx
             task_ids = obs[:, MW_OBS_LEN:]
             example_weights = tf.linalg.matvec(task_ids, normalized_current_col)
 
@@ -208,9 +221,14 @@ class Episodic_SAC(SAC):
     def get_episodic_batch(self, current_task_idx: int) -> Optional[Dict[str, tf.Tensor]]:
         if current_task_idx > 0:
             if self.oracle_sampling:
+                current_col = self.oracle_matrix_np[:, current_task_idx]
+                if self.oracle_softmax_mode:
+                    current_col = softmax(current_col[:current_task_idx] / self.oracle_clamp)
+                else:
+                    current_col = np.clip(current_col, self.oracle_clamp, np.inf)
                 return self.episodic_memory.sample_batch(
                         self.episodic_batch_size,
-                        task_weights=self.oracle_matrix_np[:, current_task_idx])
+                        task_weights=current_col)
             else:
                 return self.episodic_memory.sample_batch(self.episodic_batch_size)
         return None

@@ -49,6 +49,7 @@ def main(
     oracle_reuse_task: bool,
     start_steps: int,
     start_steps_second_half: int,
+    oracle_softmax_mode: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -149,6 +150,7 @@ def main(
             oracle_mode=oracle_mode,
             oracle_sampling=oracle_sampling,
             oracle_clamp=oracle_clamp,
+            oracle_softmax_mode=oracle_softmax_mode,
         )
     else:
         raise NotImplementedError("This method is not implemented")
