@@ -206,14 +206,7 @@ class Logger:
 
             # Log to Neptune
             if "neptune" in self.logger_output:
-                # Try several times.
-                for _ in range(10):
-                    try:
-                        self._neptune_exp.send_metric(key, step, val)
-                    except:
-                        time.sleep(5)
-                    else:
-                        break
+                self._neptune_exp[key].log(step=step, value=val)
             if "tensorboard" in self.logger_output:
                 tf.summary.scalar(key, data=val, step=step)
 
