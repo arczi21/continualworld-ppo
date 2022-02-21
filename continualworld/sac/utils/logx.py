@@ -93,11 +93,14 @@ class Logger:
                 import mrunner
 
                 self._neptune_exp = mrunner.helpers.client_helper.experiment_
+                self.neptune_new_api = mrunner.settings.NEPTUNE_USE_NEW_API
+
             else:
                 import neptune
 
                 neptune.init()  # env variable NEPTUNE_PROJECT is used
                 self._neptune_exp = neptune.create_experiment()
+                self.neptune_new_api = True  # TODO: fix?
 
         if "tensorboard" in self.logger_output:
             self.tb_writer = tf.summary.create_file_writer(self.output_dir)
@@ -206,7 +209,18 @@ class Logger:
 
             # Log to Neptune
             if "neptune" in self.logger_output:
-                self._neptune_exp[key].log(step=step, value=val)
+                # Try several times.
+                if self.neptune_new_api:
+                    self._neptune_exp[key].log(step=step, value=val)
+                else:
+                    for _ in range(10):
+                        try:
+                            self._neptune_exp.send_metric(key, step, val)
+                        except:
+                            time.sleep(5)
+                        else:
+                            break
+
             if "tensorboard" in self.logger_output:
                 tf.summary.scalar(key, data=val, step=step)
 
