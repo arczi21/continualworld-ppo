@@ -211,7 +211,7 @@ class Logger:
             if "neptune" in self.logger_output:
                 # Try several times.
                 if self.neptune_new_api:
-                    self._neptune_exp[key].log(step=step, value=val)
+                    self._neptune_exp["logs/" + key].log(step=step, value=val)
                 else:
                     for _ in range(10):
                         try:
