@@ -1,4 +1,6 @@
 from mrunner.helpers.client_helper import get_configuration
+import mrunner
+mrunner.settings.NEPTUNE_USE_NEW_API = True
 
 from continualworld.envs import get_task_name
 from continualworld.sac.utils.logx import EpochLogger
