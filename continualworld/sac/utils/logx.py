@@ -102,6 +102,9 @@ class Logger:
                 self._neptune_exp = neptune.create_experiment()
                 self.neptune_new_api = True  # TODO: fix?
 
+            if self.neptune_new_api:
+                self._neptune_exp["properties"]["new_api"] = True
+
         if "tensorboard" in self.logger_output:
             self.tb_writer = tf.summary.create_file_writer(self.output_dir)
             self.tb_writer.set_as_default()
