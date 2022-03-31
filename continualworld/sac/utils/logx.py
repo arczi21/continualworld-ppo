@@ -96,10 +96,9 @@ class Logger:
                 self.neptune_new_api = mrunner.settings.NEPTUNE_USE_NEW_API
 
             else:
-                import neptune
+                import neptune.new as neptune
 
-                neptune.init()  # env variable NEPTUNE_PROJECT is used
-                self._neptune_exp = neptune.create_experiment()
+                self._neptune_exp = neptune.init_run()
                 self.neptune_new_api = True  # TODO: fix?
 
             if self.neptune_new_api:
