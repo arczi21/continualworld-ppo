@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 import tensorflow as tf
 
 from continualworld.sac.sac import SAC
-from continualworld.utils.utils import reset_optimizer
 
 
 class PackNet_SAC(SAC):
@@ -79,13 +78,13 @@ class PackNet_SAC(SAC):
             prune_perc = num_tasks_left / (num_tasks_left + 1)
             self._prune(prune_perc, current_task_idx)
 
-            reset_optimizer(self.optimizer)
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
             for _ in range(self.retrain_steps):
                 batch = self.replay_buffer.sample_batch(self.batch_size)
                 self.learn_on_batch(tf.convert_to_tensor(current_task_idx), batch)
 
-            reset_optimizer(self.optimizer)
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
     @tf.function
     def _adjust_gradients_list(

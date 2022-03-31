@@ -1,6 +1,5 @@
 import math
 import os
-import random
 import time
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
@@ -13,7 +12,7 @@ from continualworld.sac.models import PopArtMlpCritic
 from continualworld.sac.replay_buffers import ReplayBuffer, ReservoirReplayBuffer
 from continualworld.sac.utils.logx import EpochLogger
 from continualworld.utils.enums import BufferType
-from continualworld.utils.utils import reset_optimizer, reset_weights, set_seed
+from continualworld.utils.utils import reset_weights, set_seed
 
 
 class SAC:
@@ -125,6 +124,7 @@ class SAC:
         self.replay_size = replay_size
         self.gamma = gamma
         self.polyak = polyak
+        self.lr = lr
         self.alpha = alpha
         self.batch_size = batch_size
         self.start_steps = start_steps
@@ -516,7 +516,7 @@ class SAC:
             self.target_critic2.set_weights(self.critic2.get_weights())
 
         if self.reset_optimizer_on_task_change:
-            reset_optimizer(self.optimizer)
+            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
         # Update variables list and update function in case model changed.
         # E.g: For VCL after the first task we set trainable=False for layer
