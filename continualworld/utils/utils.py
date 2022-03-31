@@ -56,12 +56,6 @@ def float_or_str(v: Union[float, str]) -> Union[float, str]:
         return v
 
 
-def reset_optimizer(optimizer: tf.keras.optimizers.Optimizer) -> None:
-    # Skip the first variable, its step count.
-    for var in optimizer.variables()[1:]:
-        var.assign(tf.zeros_like(var))
-
-
 def reset_weights(
     model: tf.keras.Model, model_cl: Type[tf.keras.Model], model_kwargs: Dict
 ) -> None:
