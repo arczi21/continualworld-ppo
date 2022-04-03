@@ -43,13 +43,7 @@ def main(
     clipnorm: float,
     agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
-    oracle_mode: bool,
-    oracle_sampling: bool,
-    oracle_clamp: float,
-    oracle_reuse_task: bool,
     start_steps: int,
-    start_steps_second_half: int,
-    oracle_softmax_mode: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -107,9 +101,7 @@ def main(
         "gamma": gamma,
         "target_output_std": target_output_std,
         "agent_policy_exploration": agent_policy_exploration,
-        "oracle_reuse_task": oracle_reuse_task,
         "start_steps": start_steps,
-        "start_steps_second_half": start_steps_second_half,
     }
 
     sac_class = get_sac_class(cl_method)
@@ -147,10 +139,6 @@ def main(
             episodic_memory_from_buffer=episodic_memory_from_buffer,
             regularize_critic=regularize_critic,
             cl_reg_coef=cl_reg_coef,
-            oracle_mode=oracle_mode,
-            oracle_sampling=oracle_sampling,
-            oracle_clamp=oracle_clamp,
-            oracle_softmax_mode=oracle_softmax_mode,
         )
     else:
         raise NotImplementedError("This method is not implemented")

@@ -4,8 +4,6 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import tensorflow as tf
 
-from continualworld.envs import (CW10_FT, CW20_FT, CW20_REUSE_TASK_FT,
-                                 MW_OBS_LEN, TRIPLE_FT)
 from continualworld.sac.replay_buffers import EpisodicMemory, ReplayBuffer
 from continualworld.sac.sac import SAC
 
@@ -15,8 +13,7 @@ class Episodic_SAC(SAC):
         self,
         episodic_mem_per_task: int = 0, episodic_batch_size: int = 0,
         regularize_critic: bool = False, cl_reg_coef: float = 0.,
-        episodic_memory_from_buffer: bool = True, oracle_mode: bool = False,
-        oracle_sampling=False, oracle_clamp: float = 0., oracle_softmax_mode: bool = False,
+        episodic_memory_from_buffer: bool = True,
         **vanilla_sac_kwargs
     ):
         """Episodic replay.
@@ -26,8 +23,6 @@ class Episodic_SAC(SAC):
           episodic_batch_size: Minibatch size to compute additional loss.
         """
         super().__init__(**vanilla_sac_kwargs)
-        if oracle_sampling:
-            assert oracle_mode, "Oracle sampling does not work without oracle mode"
 
         self.episodic_mem_per_task = episodic_mem_per_task
         self.episodic_batch_size = episodic_batch_size
@@ -39,29 +34,6 @@ class Episodic_SAC(SAC):
         self.episodic_memory = EpisodicMemory(
             obs_dim=self.obs_dim, act_dim=self.act_dim, size=episodic_mem_size
         )
-
-        self.oracle_mode = oracle_mode
-        self.oracle_sampling = oracle_sampling
-        self.oracle_clamp = oracle_clamp
-        self.oracle_softmax_mode = oracle_softmax_mode
-        print("ORACLE SOFT MAX MODE", self.oracle_softmax_mode)
-        if self.oracle_softmax_mode:
-            assert self.oracle_clamp > 0.
-
-        if self.oracle_mode:
-            if self.num_tasks == 10:
-                oracle_matrix_np = CW10_FT
-            elif self.num_tasks == 20:
-                if self.oracle_reuse_task:
-                    oracle_matrix_np = CW20_REUSE_TASK_FT
-                else:
-                    oracle_matrix_np = CW20_FT
-            elif self.num_tasks == 3:
-                oracle_matrix_np = TRIPLE_FT
-            else:
-                raise NotImplementedError
-            self.oracle_matrix_np = oracle_matrix_np
-            self.oracle_matrix = tf.convert_to_tensor(oracle_matrix_np, tf.float32)
 
     def kl_divergence(self, first_mu, first_logstd, second_mu, second_logstd):
         eps = 1e-6
@@ -85,29 +57,10 @@ class Episodic_SAC(SAC):
         target_mu = target_actor_dists[:, :self.act_dim]
         target_logstd = target_actor_dists[:, self.act_dim:]
 
-        # TODO: do this through subsampling instead importance sampling?
-        if self.oracle_mode and not self.oracle_sampling:
-            current_col = self.oracle_matrix[:, current_task_idx]
-            if self.oracle_softmax_mode: 
-                softmax_result = tf.nn.softmax(current_col[:current_task_idx] / self.oracle_clamp)
-                # TODO: horrible hack
-                normalized_current_col = tf.concat(
-                        [softmax_result, tf.zeros(self.num_tasks - current_task_idx)],
-                        axis=0)
-                normalized_current_col *= current_task_idx
-            else:
-                current_col = tf.clip_by_value(current_col, self.oracle_clamp, 1000.)
-                normalized_current_col = current_col / tf.reduce_sum(current_col[:current_task_idx])
-                normalized_current_col *= current_task_idx
-            task_ids = obs[:, MW_OBS_LEN:]
-            example_weights = tf.linalg.matvec(task_ids, normalized_current_col)
-
         with tf.GradientTape(persistent=True) as g:
             mu, logstd, _, _ = self.actor(obs)
 
             actor_loss_per_example = self.kl_divergence(target_mu, target_logstd, mu, logstd)
-            if self.oracle_mode and not self.oracle_sampling:
-                actor_loss_per_example *= example_weights
 
             # TODO: weighting
             actor_loss = tf.reduce_mean(actor_loss_per_example)
@@ -119,10 +72,6 @@ class Episodic_SAC(SAC):
 
                 critic1_loss_per_example = (critic1_pred - target_critic1_preds) ** 2
                 critic2_loss_per_example = (critic2_pred - target_critic2_preds) ** 2
-
-                if self.oracle_mode and not self.oracle_sampling:
-                    critic1_loss_per_example *= example_weights
-                    critic2_loss_per_example *= example_weights
 
                 critic1_loss = tf.reduce_mean(critic1_loss_per_example)
                 critic2_loss = tf.reduce_mean(critic2_loss_per_example)
@@ -137,7 +86,6 @@ class Episodic_SAC(SAC):
             critic_gradients = None
 
         return actor_gradients, critic_gradients
-
 
     def adjust_gradients(
         self,
@@ -166,13 +114,12 @@ class Episodic_SAC(SAC):
 
         return final_actor_gradients, final_critic_gradients, alpha_gradient
 
-
     def merge_gradients(self, new_grads: List[tf.Tensor], ref_grads: Optional[List[tf.Tensor]]):
         if ref_grads is None:
             return new_grads
         final_grads = []
         for new_grad, ref_grad in zip(new_grads, ref_grads):
-          final_grads += [(new_grad + ref_grad) / 2]
+            final_grads += [(new_grad + ref_grad) / 2]
         return final_grads
 
     def gather_buffer(self, task_idx):
@@ -199,7 +146,6 @@ class Episodic_SAC(SAC):
                 obs = next_obs
         return tmp_replay_buffer.sample_batch(self.episodic_mem_per_task)
 
-    # TODO: on_task_end?
     def on_task_start(self, current_task_idx: int) -> None:
         if current_task_idx > 0:
             if self.episodic_memory_from_buffer:
@@ -220,15 +166,5 @@ class Episodic_SAC(SAC):
 
     def get_episodic_batch(self, current_task_idx: int) -> Optional[Dict[str, tf.Tensor]]:
         if current_task_idx > 0:
-            if self.oracle_sampling:
-                current_col = self.oracle_matrix_np[:, current_task_idx]
-                if self.oracle_softmax_mode:
-                    current_col = softmax(current_col[:current_task_idx] / self.oracle_clamp)
-                else:
-                    current_col = np.clip(current_col, self.oracle_clamp, np.inf)
-                return self.episodic_memory.sample_batch(
-                        self.episodic_batch_size,
-                        task_weights=current_col)
-            else:
-                return self.episodic_memory.sample_batch(self.episodic_batch_size)
+            return self.episodic_memory.sample_batch(self.episodic_batch_size)
         return None

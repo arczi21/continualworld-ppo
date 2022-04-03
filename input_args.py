@@ -172,6 +172,7 @@ def cl_parse_args(args=None):
         help="If True, uniform exploration for start_steps steps is used only in the first task"
         "(in continual learning). Otherwise, it is used in every task",
     )
+
     parser.add_argument(
         "--episodic_memory_from_buffer",
         type=str2bool,
@@ -179,43 +180,9 @@ def cl_parse_args(args=None):
     )
 
     parser.add_argument(
-        "--oracle_mode",
-        type=str2bool,
-        default=False,
-    )
-
-    parser.add_argument(
-        "--oracle_sampling",
-        type=str2bool,
-        default=False,
-    )
-
-    parser.add_argument(
-        "--oracle_clamp",
-        type=float,
-        default=0.,
-    )
-    parser.add_argument(
-        "--oracle_reuse_task",
-        type=str2bool,
-        default=False,
-    )
-
-    parser.add_argument(
         "--start_steps",
         type=int,
         default=10_000,
-    )
-
-    parser.add_argument(
-        "--start_steps_second_half",
-        type=int,
-        default=10_000,
-    )
-    parser.add_argument(
-        "--oracle_softmax_mode",
-        type=str2bool,
-        default=False,
     )
 
     return parser.parse_args(args=args)

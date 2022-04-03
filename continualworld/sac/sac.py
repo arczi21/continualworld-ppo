@@ -7,8 +7,6 @@ import gym
 import numpy as np
 import tensorflow as tf
 
-from continualworld.envs import (CW10_FT_TRUNCATED, CW20_FT_TRUNCATED, CW20_REUSE_TASK_FT,
-                                 MW_OBS_LEN, TRIPLE_FT)
 from continualworld.sac import models
 from continualworld.sac.models import PopArtMlpCritic
 from continualworld.sac.replay_buffers import ReplayBuffer, ReservoirReplayBuffer
@@ -37,7 +35,6 @@ class SAC:
         alpha: Union[float, str] = "auto",
         batch_size: int = 128,
         start_steps: int = 10_000,
-        start_steps_second_half: int = 10_000,
         update_after: int = 1000,
         update_every: int = 50,
         num_test_eps_stochastic: int = 10,
@@ -51,7 +48,6 @@ class SAC:
         clipnorm: float = None,
         target_output_std: float = None,
         agent_policy_exploration: bool = False,
-        oracle_reuse_task: bool = True,
     ):
         """A class for SAC training, for either single task, continual learning or multi-task learning.
         After the instance is created, use run() function to actually run the training.
@@ -132,7 +128,6 @@ class SAC:
         self.alpha = alpha
         self.batch_size = batch_size
         self.start_steps = start_steps
-        self.start_steps_second_half = start_steps_second_half
         self.update_after = update_after
         self.update_every = update_every
         self.num_test_eps_stochastic = num_test_eps_stochastic
@@ -145,7 +140,6 @@ class SAC:
         self.reset_critic_on_task_change = reset_critic_on_task_change
         self.clipnorm = clipnorm
         self.agent_policy_exploration = agent_policy_exploration
-        self.oracle_reuse_task = oracle_reuse_task
 
         self.use_popart = critic_cl is PopArtMlpCritic
 
@@ -205,19 +199,6 @@ class SAC:
                 self.target_entropy = (
                     np.prod(env.action_space.shape).astype(np.float32) * target_1d_entropy
                 )
-
-        if self.agent_policy_exploration:
-            if self.num_tasks == 10:
-                self.agent_oracle_matrix = tf.convert_to_tensor(CW10_FT_TRUNCATED, tf.float32)
-            elif self.num_tasks == 20:
-                if self.oracle_reuse_task:
-                    self.agent_oracle_matrix = tf.convert_to_tensor(CW20_REUSE_TASK_FT, tf.float32)
-                else:
-                    self.agent_oracle_matrix = tf.convert_to_tensor(CW20_FT_TRUNCATED, tf.float32)
-            elif self.num_tasks == 3:
-                self.agent_oracle_matrix = tf.convert_to_tensor(TRIPLE_FT, tf.float32)
-            else:
-                raise NotImplementedError
 
     def adjust_gradients(
         self,
@@ -568,29 +549,12 @@ class SAC:
             # Until start_steps have elapsed, randomly sample actions
             # from a uniform distribution for better exploration. Afterwards,
             # use the learned policy.
-
-            start_steps = self.start_steps if current_task_idx < 10 else self.start_steps_second_half
-            if current_task_timestep <= start_steps:
-                # TODO: dirty, bad, very not good hack for triplets.
-                start_condition = (current_task_idx > 2) if self.num_tasks == 3 else (current_task_idx > 0)
-                if self.agent_policy_exploration and start_condition:
-                    num_heads = self.actor.num_heads
-                    modified_obs = obs.copy()
-                    # Change the one-hot representing the task idx, so that
-                    # the network uses the previous head to act.
-                    if num_heads > 1:
-                        one_hot = np.zeros(num_heads)
-                        source_policy_idx = np.argmax(
-                                self.agent_oracle_matrix[:current_task_idx, current_task_idx])
-                        one_hot[source_policy_idx] = 1.
-                        modified_obs[-num_heads:] = one_hot
-
-                    action = self.get_action(tf.convert_to_tensor(modified_obs))
-                else:
-                    action = self.env.action_space.sample()
-            else:
+            if current_task_timestep > self.start_steps or (
+                self.agent_policy_exploration and current_task_idx > 0
+            ):
                 action = self.get_action(tf.convert_to_tensor(obs))
-
+            else:
+                action = self.env.action_space.sample()
 
             # Step the env
             next_obs, reward, done, info = self.env.step(action)
