@@ -67,7 +67,8 @@ class AGEM_SAC(SAC):
     def on_task_start(self, current_task_idx: int) -> None:
         if current_task_idx > 0:
             new_episodic_mem = self.replay_buffer.sample_batch(self.episodic_mem_per_task)
-            self.episodic_memory.store_multiple(**new_episodic_mem)
+            numpy_episodic_mem = {key: val.numpy() for key, val in new_episodic_mem.items()}
+            self.episodic_memory.store_multiple(**numpy_episodic_mem)
 
     def get_episodic_batch(self, current_task_idx: int) -> Optional[Dict[str, tf.Tensor]]:
         if current_task_idx > 0:

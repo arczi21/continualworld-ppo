@@ -32,7 +32,8 @@ class Episodic_SAC(SAC):
 
         episodic_mem_size = self.episodic_mem_per_task * self.env.num_envs
         self.episodic_memory = EpisodicMemory(
-            obs_dim=self.obs_dim, act_dim=self.act_dim, size=episodic_mem_size
+            obs_dim=self.obs_dim, act_dim=self.act_dim,
+            size=episodic_mem_size, save_targets=True,
         )
 
     def kl_divergence(self, first_mu, first_logstd, second_mu, second_logstd):
