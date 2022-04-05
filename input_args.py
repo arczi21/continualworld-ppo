@@ -111,7 +111,7 @@ def cl_parse_args(args=None):
     parser.add_argument(
         "--cl_method",
         type=str,
-        choices=[None, "l2", "ewc", "mas", "vcl", "packnet", "agem"],
+        choices=[None, "l2", "ewc", "mas", "vcl", "packnet", "agem", "episodic_replay"],
         default=None,
         help="If None, finetuning method will be used. If one of 'l2', 'ewc', 'mas', 'vcl',"
         "'packnet', 'agem', respective method will be used.",
@@ -172,6 +172,19 @@ def cl_parse_args(args=None):
         help="If True, uniform exploration for start_steps steps is used only in the first task"
         "(in continual learning). Otherwise, it is used in every task",
     )
+
+    parser.add_argument(
+        "--episodic_memory_from_buffer",
+        type=str2bool,
+        default=True,
+    )
+
+    parser.add_argument(
+        "--start_steps",
+        type=int,
+        default=10_000,
+    )
+
     return parser.parse_args(args=args)
 
 

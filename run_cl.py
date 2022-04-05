@@ -42,6 +42,8 @@ def main(
     hide_task_id: bool,
     clipnorm: float,
     agent_policy_exploration: bool,
+    episodic_memory_from_buffer: bool,
+    start_steps: int,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -99,6 +101,7 @@ def main(
         "gamma": gamma,
         "target_output_std": target_output_std,
         "agent_policy_exploration": agent_policy_exploration,
+        "start_steps": start_steps,
     }
 
     sac_class = get_sac_class(cl_method)
@@ -127,6 +130,15 @@ def main(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
             episodic_batch_size=episodic_batch_size
+        )
+    elif cl_method == "episodic_replay":
+        sac = sac_class(
+            **vanilla_sac_kwargs,
+            episodic_mem_per_task=episodic_mem_per_task,
+            episodic_batch_size=episodic_batch_size,
+            episodic_memory_from_buffer=episodic_memory_from_buffer,
+            regularize_critic=regularize_critic,
+            cl_reg_coef=cl_reg_coef,
         )
     else:
         raise NotImplementedError("This method is not implemented")
