@@ -44,7 +44,7 @@ params_grid = [
     {  # perfect memory
         "seed": list(range(20)),
         "cl_method": [None],
-        "batch_size": [64, 128, 256, 512],
+        "batch_size": [128, 256, 512],
         "buffer_type": ["reservoir"],
         "reset_buffer_on_task_change": [False],
         "replay_size": [20_000_000],
@@ -59,9 +59,9 @@ params_grid = [
     {
         "seed": list(range(20)),
         "cl_method": ["episodic_replay"],
-        "cl_reg_coef": [10, 100, 1000],
+        "cl_reg_coef": [10.0, 100.0, 1000.0],
         "episodic_batch_size": [128, 256],
-        "episodic_mem_per_task": [10_000],
+        "episodic_mem_per_task": [10_000, 100_000],
         "clipnorm": [None, 0.01],
     },
 ]
