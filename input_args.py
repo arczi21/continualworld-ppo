@@ -184,6 +184,12 @@ def cl_parse_args(args=None):
         type=int,
         default=10_000,
     )
+    parser.add_argument(
+        "--exploration_kind",
+        type=str,
+        default=None,
+        help="Kind of exploration to use at the beginning of a new task.",
+    )
 
     return parser.parse_args(args=args)
 

@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from continualworld.sac import models
+from continualworld.sac.exploration import ExplorationHelper
 from continualworld.sac.models import PopArtMlpCritic
 from continualworld.sac.replay_buffers import ReplayBuffer, ReservoirReplayBuffer
 from continualworld.sac.utils.logx import EpochLogger
@@ -48,6 +49,7 @@ class SAC:
         clipnorm: float = None,
         target_output_std: float = None,
         agent_policy_exploration: bool = False,
+        exploration_kind: str = None,
     ):
         """A class for SAC training, for either single task, continual learning or multi-task learning.
         After the instance is created, use run() function to actually run the training.
@@ -105,6 +107,7 @@ class SAC:
             deviation of the action distribution on every dimension matches target_output_std.
           agent_policy_exploration: If True, uniform exploration for start_steps steps is used only
             in the first task (in continual learning). Otherwise, it is used in every task.
+          exploration_kind: Kind of exploration to use at the beginning of a new task.
         """
         set_seed(seed, env=env)
 
@@ -199,6 +202,10 @@ class SAC:
                 self.target_entropy = (
                     np.prod(env.action_space.shape).astype(np.float32) * target_1d_entropy
                 )
+
+        self.exploration_kind = exploration_kind
+        ExplorationHelper.check_kind(exploration_kind)
+        self.exploration_helper = None
 
     def adjust_gradients(
         self,
@@ -529,10 +536,16 @@ class SAC:
             + self.critic2.common_variables
         )
 
+        if self.exploration_kind is not None and current_task_idx > 0:
+            self.exploration_helper = ExplorationHelper(
+                self.exploration_kind, num_heads=current_task_idx + 1
+            )
+
     def run(self):
         """A method to run the SAC training, after the object has been created."""
         self.start_time = time.time()
         obs, episode_return, episode_len = self.env.reset(), 0, 0
+        exploration_head = None
 
         # Main loop: collect experience in env and update/log each epoch
         current_task_timestep = 0
@@ -554,10 +567,27 @@ class SAC:
             ):
                 action = self.get_action(tf.convert_to_tensor(obs))
             else:
-                action = self.env.action_space.sample()
+                # Exploration
+                if self.exploration_helper is not None:
+                    modified_obs = obs.copy()
+                    num_heads = self.actor.num_heads
+
+                    if exploration_head is None:
+                        exploration_head = self.exploration_helper.get_exploration_head()
+
+                    modified_obs[-num_heads:][
+                        : self.exploration_helper.num_heads
+                    ] = exploration_head
+
+                    action = self.get_action(tf.convert_to_tensor(modified_obs))
+                else:
+                    action = self.env.action_space.sample()
 
             # Step the env
             next_obs, reward, done, info = self.env.step(action)
+            if self.exploration_helper is not None and exploration_head is not None:
+                current_success = self.env.envs[current_task_idx].current_success  # hack
+                self.exploration_helper.tell_results(reward, current_success)
             episode_return += reward
             episode_len += 1
 
@@ -581,6 +611,7 @@ class SAC:
                 episode_return, episode_len = 0, 0
                 if global_timestep < self.steps - 1:
                     obs = self.env.reset()
+                    exploration_head = None
 
             # Update handling
             if (
