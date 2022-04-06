@@ -79,6 +79,9 @@ class PackNet_SAC(SAC):
             self._prune(prune_perc, current_task_idx)
 
             self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+            self.learn_on_batch = self.get_learn_on_batch(
+                current_task_idx
+            )  # because optimizer has changed
 
             for _ in range(self.retrain_steps):
                 batch = self.replay_buffer.sample_batch(self.batch_size)
