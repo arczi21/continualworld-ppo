@@ -44,6 +44,7 @@ def main(
     agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
     start_steps: int,
+    exploration_kind: str,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -102,6 +103,7 @@ def main(
         "target_output_std": target_output_std,
         "agent_policy_exploration": agent_policy_exploration,
         "start_steps": start_steps,
+        "exploration_kind": exploration_kind,
     }
 
     sac_class = get_sac_class(cl_method)
@@ -117,19 +119,19 @@ def main(
             **vanilla_sac_kwargs,
             cl_reg_coef=cl_reg_coef,
             regularize_critic=regularize_critic,
-            first_task_kl=vcl_first_task_kl
+            first_task_kl=vcl_first_task_kl,
         )
     elif cl_method == "packnet":
         sac = sac_class(
             **vanilla_sac_kwargs,
             regularize_critic=regularize_critic,
-            retrain_steps=packnet_retrain_steps
+            retrain_steps=packnet_retrain_steps,
         )
     elif cl_method == "agem":
         sac = sac_class(
             **vanilla_sac_kwargs,
             episodic_mem_per_task=episodic_mem_per_task,
-            episodic_batch_size=episodic_batch_size
+            episodic_batch_size=episodic_batch_size,
         )
     elif cl_method == "episodic_replay":
         sac = sac_class(
