@@ -538,14 +538,15 @@ class SAC:
 
         if self.exploration_kind is not None and current_task_idx > 0:
             self.exploration_helper = ExplorationHelper(
-                self.exploration_kind, num_heads=current_task_idx + 1
+                self.exploration_kind, num_available_heads=current_task_idx + 1
             )
 
     def run(self):
         """A method to run the SAC training, after the object has been created."""
         self.start_time = time.time()
         obs, episode_return, episode_len = self.env.reset(), 0, 0
-        exploration_head = None
+        # Set exploration head as "undecided".
+        exploration_head_one_hot = None
 
         # Main loop: collect experience in env and update/log each epoch
         current_task_timestep = 0
@@ -569,23 +570,27 @@ class SAC:
             else:
                 # Exploration
                 if self.exploration_helper is not None:
+                    # Use strategy provided by exploration helper.
                     modified_obs = obs.copy()
                     num_heads = self.actor.num_heads
 
-                    if exploration_head is None:
-                        exploration_head = self.exploration_helper.get_exploration_head()
+                    if exploration_head_one_hot is None:
+                        exploration_head_one_hot = (
+                            self.exploration_helper.get_exploration_head_one_hot()
+                        )
 
                     modified_obs[-num_heads:][
-                        : self.exploration_helper.num_heads
-                    ] = exploration_head
+                        : self.exploration_helper.num_available_heads
+                    ] = exploration_head_one_hot
 
                     action = self.get_action(tf.convert_to_tensor(modified_obs))
                 else:
+                    # Just pure random exploration.
                     action = self.env.action_space.sample()
 
             # Step the env
             next_obs, reward, done, info = self.env.step(action)
-            if self.exploration_helper is not None and exploration_head is not None:
+            if self.exploration_helper is not None and exploration_head_one_hot is not None:
                 current_success = self.env.envs[current_task_idx].current_success  # hack
                 self.exploration_helper.tell_results(reward, current_success)
             episode_return += reward
@@ -611,7 +616,7 @@ class SAC:
                 episode_return, episode_len = 0, 0
                 if global_timestep < self.steps - 1:
                     obs = self.env.reset()
-                    exploration_head = None
+                    exploration_head_one_hot = None
 
             # Update handling
             if (
