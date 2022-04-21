@@ -69,7 +69,7 @@ params_grid = [
         "cl_reg_coef": [100.0],
         "episodic_batch_size": [128],
         "episodic_mem_per_task": [10_000],
-        "clipnorm": [None, 0.01],
+        "clipnorm": [None, 0.01, 0.1],
         "exploration_kind": [
             None,
             "previous",
