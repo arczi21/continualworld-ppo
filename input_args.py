@@ -79,6 +79,12 @@ def cl_parse_args(args=None):
         help="If true, optimizer is reset on each task change",
     )
     parser.add_argument(
+        "--reset_actor_on_task_change",
+        type=str2bool,
+        default=False,
+        help="If true, actor model is reset on each task change",
+    )
+    parser.add_argument(
         "--reset_critic_on_task_change",
         type=str2bool,
         default=False,

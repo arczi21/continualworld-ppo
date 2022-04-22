@@ -45,6 +45,7 @@ class SAC:
         reset_buffer_on_task_change: bool = True,
         buffer_type: BufferType = BufferType.FIFO,
         reset_optimizer_on_task_change: bool = False,
+        reset_actor_on_task_change: bool = False,
         reset_critic_on_task_change: bool = False,
         clipnorm: float = None,
         target_output_std: float = None,
@@ -122,6 +123,8 @@ class SAC:
         self.logger = logger
         self.critic_cl = critic_cl
         self.critic_kwargs = critic_kwargs
+        self.actor_cl = actor_cl
+        self.actor_kwargs = actor_kwargs
         self.steps = steps
         self.log_every = log_every
         self.replay_size = replay_size
@@ -140,6 +143,7 @@ class SAC:
         self.reset_buffer_on_task_change = reset_buffer_on_task_change
         self.buffer_type = buffer_type
         self.reset_optimizer_on_task_change = reset_optimizer_on_task_change
+        self.reset_actor_on_task_change = reset_actor_on_task_change
         self.reset_critic_on_task_change = reset_critic_on_task_change
         self.clipnorm = clipnorm
         self.agent_policy_exploration = agent_policy_exploration
@@ -168,6 +172,11 @@ class SAC:
 
         # Create actor and critic networks
         self.actor = actor_cl(**actor_kwargs)
+
+        if exploration_kind is not None and self.reset_actor_on_task_change:
+            self.exploration_actor = actor_cl(**actor_kwargs)
+        else:
+            self.exploration_actor = None
 
         self.critic1 = critic_cl(**critic_kwargs)
         self.target_critic1 = critic_cl(**critic_kwargs)
@@ -242,6 +251,14 @@ class SAC:
     @tf.function
     def get_action(self, o: tf.Tensor, deterministic: tf.Tensor = tf.constant(False)) -> tf.Tensor:
         mu, log_std, pi, logp_pi = self.actor(tf.expand_dims(o, 0))
+        if deterministic:
+            return mu[0]
+        else:
+            return pi[0]
+
+    @tf.function
+    def get_exploration_action(self, o: tf.Tensor, deterministic: tf.Tensor = tf.constant(False)) -> tf.Tensor:
+        mu, log_std, pi, logp_pi = self.exploration_actor(tf.expand_dims(o, 0))
         if deterministic:
             return mu[0]
         else:
@@ -502,11 +519,27 @@ class SAC:
                 dir_prefixes.append("./checkpoints")
 
         for prefix in dir_prefixes:
-            self.actor.save_weights(os.path.join(prefix, "actor"))
-            self.critic1.save_weights(os.path.join(prefix, "critic1"))
-            self.target_critic1.save_weights(os.path.join(prefix, "target_critic1"))
-            self.critic2.save_weights(os.path.join(prefix, "critic2"))
-            self.target_critic2.save_weights(os.path.join(prefix, "target_critic2"))
+            os.makedirs(prefix, exist_ok=True)
+
+            actor_path = os.path.join(prefix, "actor.h5")
+            self.actor.save_weights(actor_path)
+            self.logger._neptune_exp[f"actor_task{current_task_idx}_weights"].upload(actor_path)
+
+            critic1_path = os.path.join(prefix, "critic1.h5")
+            self.critic1.save_weights(critic1_path)
+            self.logger._neptune_exp[f"critic1_task{current_task_idx}_weights"].upload(critic1_path)
+
+            target_critic1_path = os.path.join(prefix, "target_critic1.h5")
+            self.target_critic1.save_weights(target_critic1_path)
+            self.logger._neptune_exp[f"target_critic1_task{current_task_idx}_weights"].upload(target_critic1_path)
+
+            critic2_path = os.path.join(prefix, "critic2.h5")
+            self.critic2.save_weights(critic2_path)
+            self.logger._neptune_exp[f"critic2_task{current_task_idx}_weights"].upload(critic2_path)
+
+            target_critic2_path = os.path.join(prefix, "target_critic2.h5")
+            self.target_critic2.save_weights(target_critic2_path)
+            self.logger._neptune_exp[f"target_critic2_task{current_task_idx}_weights"].upload(target_critic2_path)
 
     def _handle_task_change(self, current_task_idx: int):
         self.on_task_start(current_task_idx)
@@ -516,6 +549,12 @@ class SAC:
             self.replay_buffer = ReplayBuffer(
                 obs_dim=self.obs_dim, act_dim=self.act_dim, size=self.replay_size
             )
+
+        if self.reset_actor_on_task_change:
+            if self.agent_policy_exploration:
+                self.exploration_actor.set_weights(self.actor.get_weights())
+            reset_weights(self.actor, self.actor_cl, self.actor_kwargs)
+
         if self.reset_critic_on_task_change:
             reset_weights(self.critic1, self.critic_cl, self.critic_kwargs)
             self.target_critic1.set_weights(self.critic1.get_weights())
@@ -583,7 +622,10 @@ class SAC:
                         : self.exploration_helper.num_available_heads
                     ] = exploration_head_one_hot
 
-                    action = self.get_action(tf.convert_to_tensor(modified_obs))
+                    if self.exploration_actor is not None:
+                        action = self.get_exploration_action(tf.convert_to_tensor(modified_obs))
+                    else:
+                        action = self.get_action(tf.convert_to_tensor(modified_obs))
                 else:
                     # Just pure random exploration.
                     action = self.env.action_space.sample()
@@ -639,14 +681,12 @@ class SAC:
                 and current_task_timestep + 1 == self.env.steps_per_env
             ):
                 self.on_task_end(current_task_idx)
+                self.save_model(current_task_idx)
 
             # End of epoch wrap-up
             if ((global_timestep + 1) % self.log_every == 0) or (global_timestep + 1 == self.steps):
                 epoch = (global_timestep + 1 + self.log_every - 1) // self.log_every
 
-                # Save model
-                if (epoch % self.save_freq_epochs == 0) or (global_timestep + 1 == self.steps):
-                    self.save_model(current_task_idx)
 
                 # Test the performance of stochastic and detemi version of the agent.
                 self.test_agent(deterministic=False, num_episodes=self.num_test_eps_stochastic)
