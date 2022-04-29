@@ -42,10 +42,10 @@ def main(
     multihead_archs: bool,
     hide_task_id: bool,
     clipnorm: float,
-    agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
     start_steps: int,
     exploration_kind: str,
+    upload_weights: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -103,9 +103,9 @@ def main(
         "clipnorm": clipnorm,
         "gamma": gamma,
         "target_output_std": target_output_std,
-        "agent_policy_exploration": agent_policy_exploration,
         "start_steps": start_steps,
         "exploration_kind": exploration_kind,
+        "upload_weights": upload_weights,
     }
 
     sac_class = get_sac_class(cl_method)

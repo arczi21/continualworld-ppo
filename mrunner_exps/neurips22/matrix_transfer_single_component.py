@@ -7,7 +7,6 @@ name = globals()["script"][:-3]
 config = {
     "run_kind": "cl",
     "logger_output": ["tsv", "neptune"],
-    "agent_policy_exploration": False,
     "cl_method": None,
     "replay_size": int(2e6),
 
@@ -17,6 +16,7 @@ config = {
     "reset_critic_on_task_change": True,
     "reset_optimizer_on_task_change": True,
     "exploration_kind": None,
+    "upload_weights": True,
 }
 config = combine_config_with_defaults(config)
 

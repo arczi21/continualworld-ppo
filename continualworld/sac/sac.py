@@ -49,8 +49,8 @@ class SAC:
         reset_critic_on_task_change: bool = False,
         clipnorm: float = None,
         target_output_std: float = None,
-        agent_policy_exploration: bool = False,
         exploration_kind: str = None,
+        upload_weights: bool = False,
     ):
         """A class for SAC training, for either single task, continual learning or multi-task learning.
         After the instance is created, use run() function to actually run the training.
@@ -106,9 +106,8 @@ class SAC:
           clipnorm: Value for gradient clipping.
           target_output_std: If alpha is 'auto', alpha is dynamically tuned so that standard
             deviation of the action distribution on every dimension matches target_output_std.
-          agent_policy_exploration: If True, uniform exploration for start_steps steps is used only
-            in the first task (in continual learning). Otherwise, it is used in every task.
           exploration_kind: Kind of exploration to use at the beginning of a new task.
+          upload_weights: Whether to send weight to neptune after each task.
         """
         set_seed(seed, env=env)
 
@@ -146,7 +145,7 @@ class SAC:
         self.reset_actor_on_task_change = reset_actor_on_task_change
         self.reset_critic_on_task_change = reset_critic_on_task_change
         self.clipnorm = clipnorm
-        self.agent_policy_exploration = agent_policy_exploration
+        self.upload_weights = upload_weights
 
         self.use_popart = critic_cl is PopArtMlpCritic
 
@@ -172,6 +171,10 @@ class SAC:
 
         # Create actor and critic networks
         self.actor = actor_cl(**actor_kwargs)
+
+
+        if self.reset_actor_on_task_change:
+            assert exploration_kind in [None, "current", "previous"]
 
         if exploration_kind is not None and self.reset_actor_on_task_change:
             self.exploration_actor = actor_cl(**actor_kwargs)
@@ -523,23 +526,25 @@ class SAC:
 
             actor_path = os.path.join(prefix, "actor.h5")
             self.actor.save_weights(actor_path)
-            self.logger._neptune_exp[f"actor_task{current_task_idx}_weights"].upload(actor_path)
 
             critic1_path = os.path.join(prefix, "critic1.h5")
             self.critic1.save_weights(critic1_path)
-            self.logger._neptune_exp[f"critic1_task{current_task_idx}_weights"].upload(critic1_path)
 
             target_critic1_path = os.path.join(prefix, "target_critic1.h5")
             self.target_critic1.save_weights(target_critic1_path)
-            self.logger._neptune_exp[f"target_critic1_task{current_task_idx}_weights"].upload(target_critic1_path)
 
             critic2_path = os.path.join(prefix, "critic2.h5")
             self.critic2.save_weights(critic2_path)
-            self.logger._neptune_exp[f"critic2_task{current_task_idx}_weights"].upload(critic2_path)
 
             target_critic2_path = os.path.join(prefix, "target_critic2.h5")
             self.target_critic2.save_weights(target_critic2_path)
-            self.logger._neptune_exp[f"target_critic2_task{current_task_idx}_weights"].upload(target_critic2_path)
+
+            if self.upload_weights:
+                self.logger._neptune_exp[f"actor_task{current_task_idx}_weights"].upload(actor_path)
+                self.logger._neptune_exp[f"critic1_task{current_task_idx}_weights"].upload(critic1_path)
+                self.logger._neptune_exp[f"target_critic1_task{current_task_idx}_weights"].upload(target_critic1_path)
+                self.logger._neptune_exp[f"critic2_task{current_task_idx}_weights"].upload(critic2_path)
+                self.logger._neptune_exp[f"target_critic2_task{current_task_idx}_weights"].upload(target_critic2_path)
 
     def _handle_task_change(self, current_task_idx: int):
         self.on_task_start(current_task_idx)
@@ -551,7 +556,7 @@ class SAC:
             )
 
         if self.reset_actor_on_task_change:
-            if self.agent_policy_exploration:
+            if self.exploration_kind is not None:
                 self.exploration_actor.set_weights(self.actor.get_weights())
             reset_weights(self.actor, self.actor_cl, self.actor_kwargs)
 
@@ -602,9 +607,7 @@ class SAC:
             # Until start_steps have elapsed, randomly sample actions
             # from a uniform distribution for better exploration. Afterwards,
             # use the learned policy.
-            if current_task_timestep > self.start_steps or (
-                self.agent_policy_exploration and current_task_idx > 0
-            ):
+            if current_task_timestep > self.start_steps:
                 action = self.get_action(tf.convert_to_tensor(obs))
             else:
                 # Exploration
