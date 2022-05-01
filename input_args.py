@@ -79,6 +79,12 @@ def cl_parse_args(args=None):
         help="If true, optimizer is reset on each task change",
     )
     parser.add_argument(
+        "--reset_actor_on_task_change",
+        type=str2bool,
+        default=False,
+        help="If true, actor model is reset on each task change",
+    )
+    parser.add_argument(
         "--reset_critic_on_task_change",
         type=str2bool,
         default=False,
@@ -165,13 +171,6 @@ def cl_parse_args(args=None):
         help="if True, one-hot encoding of the task will not be appended to observation",
     )
     parser.add_argument("--clipnorm", type=float, default=None, help="Value for gradient clipping")
-    parser.add_argument(
-        "--agent_policy_exploration",
-        type=str2bool,
-        default=False,
-        help="If True, uniform exploration for start_steps steps is used only in the first task"
-        "(in continual learning). Otherwise, it is used in every task",
-    )
 
     parser.add_argument(
         "--episodic_memory_from_buffer",
@@ -189,6 +188,12 @@ def cl_parse_args(args=None):
         type=str,
         default=None,
         help="Kind of exploration to use at the beginning of a new task.",
+    )
+    parser.add_argument(
+        "--upload_weights",
+        type=str2bool,
+        help="Upload weights to neptune",
+        default=False,
     )
 
     return parser.parse_args(args=args)

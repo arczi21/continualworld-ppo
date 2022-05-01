@@ -37,14 +37,15 @@ def main(
     vcl_first_task_kl: bool,
     episodic_mem_per_task: int,
     episodic_batch_size: int,
+    reset_actor_on_task_change: bool,
     reset_critic_on_task_change: bool,
     multihead_archs: bool,
     hide_task_id: bool,
     clipnorm: float,
-    agent_policy_exploration: bool,
     episodic_memory_from_buffer: bool,
     start_steps: int,
     exploration_kind: str,
+    upload_weights: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -97,13 +98,14 @@ def main(
         "reset_optimizer_on_task_change": reset_optimizer_on_task_change,
         "lr": lr,
         "alpha": alpha,
+        "reset_actor_on_task_change": reset_actor_on_task_change,
         "reset_critic_on_task_change": reset_critic_on_task_change,
         "clipnorm": clipnorm,
         "gamma": gamma,
         "target_output_std": target_output_std,
-        "agent_policy_exploration": agent_policy_exploration,
         "start_steps": start_steps,
         "exploration_kind": exploration_kind,
+        "upload_weights": upload_weights,
     }
 
     sac_class = get_sac_class(cl_method)
