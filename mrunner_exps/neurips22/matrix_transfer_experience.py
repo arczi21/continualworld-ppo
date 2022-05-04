@@ -42,7 +42,13 @@ settings = [
         "regularize_critic": False,
         "cl_reg_coef": 100.,
     },
-
+    # Enable transfer, Perfect memory
+    {
+        "reset_actor_on_task_change": False,
+        "reset_critic_on_task_change": False,
+        "reset_optimizer_on_task_change": False,
+        "exploration_kind": "previous",
+    },
     # Enable transfer, Perfect memory
     {
         "reset_actor_on_task_change": False,
