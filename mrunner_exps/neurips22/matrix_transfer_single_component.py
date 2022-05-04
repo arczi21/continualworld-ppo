@@ -1,7 +1,7 @@
 from mrunner.helpers.specification_helper import create_experiments_helper
 
 from mrunner_utils import combine_config_with_defaults
-# from continualworld.tasks import TASK_SEQS
+from continualworld.tasks import TASK_SEQS
 
 name = globals()["script"][:-3]
 config = {
@@ -16,15 +16,13 @@ config = {
     "reset_critic_on_task_change": True,
     "reset_optimizer_on_task_change": True,
     "exploration_kind": None,
-    "upload_weights": True,
+    "upload_weights": False,
 }
 config = combine_config_with_defaults(config)
 
-# TODO: more tasks?
-tasks = ["push-back-v1", "push-v1", "shelf-place-v1", "peg-unplug-side-v1"]
-# tasks = TASK_SEQS["CW10"]
+tasks = TASK_SEQS["CW10"]
 pairs = [[first_task, second_task] for first_task in tasks for second_task in tasks]
-num_seeds = 20
+num_seeds = 10
 
 
 settings = [
