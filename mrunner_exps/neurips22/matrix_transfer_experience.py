@@ -28,57 +28,57 @@ num_seeds = 10
 settings = [
     # Perfect memory
     {
-        "reset_buffer_on_task_change": False
+        "reset_buffer_on_task_change": [False]
     },
     # Exp replay
     {
-        "cl_method": "episodic_replay",
-        "regularize_critic": True,
-        "cl_reg_coef": 100.,
+        "cl_method": ["episodic_replay"],
+        "regularize_critic": [True],
+        "cl_reg_coef": [100.],
     },
     # Exp replay, only actor
     {
-        "cl_method": "episodic_replay",
-        "regularize_critic": False,
-        "cl_reg_coef": 100.,
+        "cl_method": ["episodic_replay"],
+        "regularize_critic": [False],
+        "cl_reg_coef": [100.],
     },
     # Enable transfer, Perfect memory
     {
-        "reset_actor_on_task_change": False,
-        "reset_critic_on_task_change": False,
-        "reset_optimizer_on_task_change": False,
-        "exploration_kind": "previous",
+        "reset_actor_on_task_change": [False],
+        "reset_critic_on_task_change": [False],
+        "reset_optimizer_on_task_change": [False],
+        "exploration_kind": ["previous"],
     },
     # Enable transfer, Perfect memory
     {
-        "reset_actor_on_task_change": False,
-        "reset_critic_on_task_change": False,
-        "reset_optimizer_on_task_change": False,
-        "exploration_kind": "previous",
+        "reset_actor_on_task_change": [False],
+        "reset_critic_on_task_change": [False],
+        "reset_optimizer_on_task_change": [False],
+        "exploration_kind": ["previous"],
 
-        "reset_buffer_on_task_change": False
+        "reset_buffer_on_task_change": [False]
     },
     # Enable transfer, Exp replay
     {
-        "reset_actor_on_task_change": False,
-        "reset_critic_on_task_change": False,
-        "reset_optimizer_on_task_change": False,
-        "exploration_kind": "previous",
+        "reset_actor_on_task_change": [False],
+        "reset_critic_on_task_change": [False],
+        "reset_optimizer_on_task_change": [False],
+        "exploration_kind": ["previous"],
 
-        "cl_method": "episodic_replay",
-        "regularize_critic": True,
-        "cl_reg_coef": 100.,
+        "cl_method": ["episodic_replay"],
+        "regularize_critic": [True],
+        "cl_reg_coef": [100.],
     },
     # Enable transfer, Exp replay, only actor
     {
-        "reset_actor_on_task_change": False,
-        "reset_critic_on_task_change": False,
-        "reset_optimizer_on_task_change": False,
-        "exploration_kind": "previous",
+        "reset_actor_on_task_change": [False],
+        "reset_critic_on_task_change": [False],
+        "reset_optimizer_on_task_change": [False],
+        "exploration_kind": ["previous"],
 
-        "cl_method": "episodic_replay",
-        "regularize_critic": False,
-        "cl_reg_coef": 100.,
+        "cl_method": ["episodic_replay"],
+        "regularize_critic": [False],
+        "cl_reg_coef": [100.],
     },
 
 ]
