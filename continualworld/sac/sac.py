@@ -46,11 +46,14 @@ class SAC:
         buffer_type: BufferType = BufferType.FIFO,
         reset_optimizer_on_task_change: bool = False,
         reset_actor_on_task_change: bool = False,
+        transfer_alpha_on_task_change: bool = False,
         reset_critic_on_task_change: bool = False,
         clipnorm: float = None,
         target_output_std: float = None,
         exploration_kind: str = None,
         upload_weights: bool = False,
+        freeze_actor_on_task_change: bool = False,
+        freeze_critic_on_task_change: bool = False,
     ):
         """A class for SAC training, for either single task, continual learning or multi-task learning.
         After the instance is created, use run() function to actually run the training.
@@ -142,10 +145,17 @@ class SAC:
         self.reset_buffer_on_task_change = reset_buffer_on_task_change
         self.buffer_type = buffer_type
         self.reset_optimizer_on_task_change = reset_optimizer_on_task_change
+        self.transfer_alpha_on_task_change = transfer_alpha_on_task_change
         self.reset_actor_on_task_change = reset_actor_on_task_change
         self.reset_critic_on_task_change = reset_critic_on_task_change
         self.clipnorm = clipnorm
         self.upload_weights = upload_weights
+        self.freeze_actor_on_task_change = freeze_actor_on_task_change
+        self.freeze_critic_on_task_change = freeze_critic_on_task_change
+
+
+        self.update_actor = True
+        self.update_critic = True
 
         self.use_popart = critic_cl is PopArtMlpCritic
 
@@ -189,14 +199,19 @@ class SAC:
         self.target_critic2 = critic_cl(**critic_kwargs)
         self.target_critic2.set_weights(self.critic2.get_weights())
 
+        self.actor_variables = self.actor.trainable_variables
         self.critic_variables = self.critic1.trainable_variables + self.critic2.trainable_variables
+        # TODO: common variables are not correct currently
         self.all_common_variables = (
             self.actor.common_variables
             + self.critic1.common_variables
             + self.critic2.common_variables
         )
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.actor_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.critic_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.alpha_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+        self.lr = lr
 
         # For reference on automatic alpha tuning, see
         # "Automating Entropy Adjustment for Maximum Entropy" section
@@ -297,7 +312,7 @@ class SAC:
                     tf.clip_by_norm(alpha_gradient, self.clipnorm),
                 )
 
-            self.apply_update(*gradients)
+            self.apply_update(current_task_idx, *gradients)
             return metrics
 
         return learn_on_batch
@@ -404,16 +419,20 @@ class SAC:
 
     def apply_update(
         self,
+        current_task_idx: int,
         actor_gradients: List[tf.Tensor],
         critic_gradients: List[tf.Tensor],
         alpha_gradient: List[tf.Tensor],
     ) -> None:
-        self.optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
 
-        self.optimizer.apply_gradients(zip(critic_gradients, self.critic_variables))
+        if self.update_actor:
+            self.actor_optimizer.apply_gradients(zip(actor_gradients, self.actor.trainable_variables))
 
-        if self.auto_alpha:
-            self.optimizer.apply_gradients([(alpha_gradient, self.all_log_alpha)])
+        if self.update_critic:
+            self.critic_optimizer.apply_gradients(zip(critic_gradients, self.critic_variables))
+
+        if self.auto_alpha and self.update_actor:
+            self.alpha_optimizer.apply_gradients([(alpha_gradient, self.all_log_alpha)])
 
         # Polyak averaging for target variables
         for v, target_v in zip(
@@ -549,41 +568,111 @@ class SAC:
     def _handle_task_change(self, current_task_idx: int):
         self.on_task_start(current_task_idx)
 
-        if self.reset_buffer_on_task_change:
-            assert self.buffer_type == BufferType.FIFO
-            self.replay_buffer = ReplayBuffer(
-                obs_dim=self.obs_dim, act_dim=self.act_dim, size=self.replay_size
+        if current_task_idx > 0:
+            if self.reset_actor_on_task_change:
+                if self.exploration_kind is not None:
+                    self.exploration_actor.set_weights(self.actor.get_weights())
+                reset_weights(self.actor, self.actor_cl, self.actor_kwargs)
+
+            if self.reset_buffer_on_task_change:
+                assert self.buffer_type == BufferType.FIFO
+                self.replay_buffer = ReplayBuffer(
+                    obs_dim=self.obs_dim, act_dim=self.act_dim, size=self.replay_size
+                )
+
+            if self.reset_critic_on_task_change:
+                reset_weights(self.critic1, self.critic_cl, self.critic_kwargs)
+                reset_weights(self.critic2, self.critic_cl, self.critic_kwargs)
+                self.target_critic1.set_weights(self.critic1.get_weights())
+                self.target_critic2.set_weights(self.critic2.get_weights())
+
+            # TODO: Check!
+            if self.transfer_alpha_on_task_change:
+                alpha_value = self.all_log_alpha.numpy()
+                alpha_value[current_task_idx] = alpha_value[current_task_idx - 1]
+                self.all_log_alpha.assign(alpha_value)
+
+            if self.reset_optimizer_on_task_change:
+                self.actor_optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+                self.critic_optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+                self.alpha_optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
+
+
+            # Update variables list and update function in case model changed.
+            # E.g: For VCL after the first task we set trainable=False for layer
+            # normalization. We need to recompute the graph in order for TensorFlow
+            # to notice this change.
+            self.update_variables()
+
+
+        self.learn_on_batch = self.get_learn_on_batch(current_task_idx)
+
+        if self.exploration_kind is not None and current_task_idx > 0:
+            self.exploration_helper = ExplorationHelper(
+                self.exploration_kind, num_available_heads=current_task_idx + 1
             )
 
-        if self.reset_actor_on_task_change:
-            if self.exploration_kind is not None:
-                self.exploration_actor.set_weights(self.actor.get_weights())
-            reset_weights(self.actor, self.actor_cl, self.actor_kwargs)
 
-        if self.reset_critic_on_task_change:
-            reset_weights(self.critic1, self.critic_cl, self.critic_kwargs)
+    def filter_variables(self, critic, layer_order, frozen_layers_num, total_layers_num=4):
+        variables_to_train = []
+        layer_idx = -1
+        for variable in critic.core.trainable_variables:
+            if "dense" in variable.name and "kernel" in variable.name:
+                layer_idx += 1
+            if layer_order == "f" and layer_idx >= frozen_layers_num:
+                variables_to_train += [variable]
+            elif layer_order == "l" and (total_layers_num - layer_idx) > frozen_layers_num:
+                variables_to_train += [variable]
+
+
+        return variables_to_train
+
+
+    def update_variables(self):
+        self.critic_variables = (
+            self.critic1.trainable_variables
+            + self.critic2.trainable_variables)
+        if self.freeze_critic_on_task_change == "all":
+            self.update_critic = False
+        elif self.freeze_critic_on_task_change == "core":
+            self.critic_variables = (
+                self.critic1.head.trainable_variables
+                + self.critic2.head.trainable_variables)
+        elif (self.freeze_critic_on_task_change is not None and
+                self.freeze_critic_on_task_change.startswith("core")):
+            head_variables = (
+                self.critic1.head.trainable_variables
+                + self.critic2.head.trainable_variables)
+
+            layer_order, layer_num = self.freeze_critic_on_task_change.split("-")[1]
+            layer_num = int(layer_num)
+            critic1_trainable = self.filter_variables(self.critic1, layer_order, layer_num)
+            critic2_trainable = self.filter_variables(self.critic2, layer_order, layer_num)
+            print("trainable critic1 variables", list(v.name for v in critic1_trainable))
+            print("trainable critic2 variables", list(v.name for v in critic2_trainable))
+            self.critic_variables = critic1_trainable + critic2_trainable + head_variables
+
+        if self.freeze_critic_on_task_change is not None:
             self.target_critic1.set_weights(self.critic1.get_weights())
-            reset_weights(self.critic2, self.critic_cl, self.critic_kwargs)
             self.target_critic2.set_weights(self.critic2.get_weights())
 
-        if self.reset_optimizer_on_task_change:
-            self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
-        # Update variables list and update function in case model changed.
-        # E.g: For VCL after the first task we set trainable=False for layer
-        # normalization. We need to recompute the graph in order for TensorFlow
-        # to notice this change.
-        self.learn_on_batch = self.get_learn_on_batch(current_task_idx)
+        self.actor_variables = self.actor.trainable_variables
+
+        if self.freeze_actor_on_task_change == "all":
+            self.update_actor = False
+        elif self.freeze_actor_on_task_change == "core":
+            self.actor_variables = (
+                self.actor.head_mu.trainable_variables
+                + self.actor.head_log_std.trainable_variables
+            )
+
         self.all_common_variables = (
             self.actor.common_variables
             + self.critic1.common_variables
             + self.critic2.common_variables
         )
 
-        if self.exploration_kind is not None and current_task_idx > 0:
-            self.exploration_helper = ExplorationHelper(
-                self.exploration_kind, num_available_heads=current_task_idx + 1
-            )
 
     def run(self):
         """A method to run the SAC training, after the object has been created."""
