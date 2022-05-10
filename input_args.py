@@ -195,6 +195,21 @@ def cl_parse_args(args=None):
         help="Upload weights to neptune",
         default=False,
     )
+    parser.add_argument(
+        "--freeze_actor_on_task_change",
+        type=str, default=None,
+        choices=["core", "all"],
+    )
+    parser.add_argument(
+        "--freeze_critic_on_task_change",
+        type=str, default=None,
+    )
+    parser.add_argument(
+        "--transfer_alpha_on_task_change",
+        type=str2bool,
+        help="Transfer the alpha on task change",
+        default=False,
+    )
 
     return parser.parse_args(args=args)
 

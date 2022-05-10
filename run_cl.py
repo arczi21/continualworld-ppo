@@ -46,6 +46,9 @@ def main(
     start_steps: int,
     exploration_kind: str,
     upload_weights: bool,
+    freeze_actor_on_task_change: str,
+    freeze_critic_on_task_change: str,
+    transfer_alpha_on_task_change: bool,
 ):
     assert (tasks is None) != (task_list is None)
     if tasks is not None:
@@ -59,6 +62,10 @@ def main(
         get_single_env(task, one_hot_idx=i, one_hot_len=num_tasks) for i, task in enumerate(tasks)
     ]
     steps = steps_per_task * len(tasks)
+
+    if cl_method is not None:
+        no_freezing = (freeze_actor_on_task_change is None and freeze_critic_on_task_change is None)
+        assert no_freezing, "CL methods with freezing are not supported yet"
 
     num_heads = num_tasks if multihead_archs else 1
     actor_kwargs = dict(
@@ -106,6 +113,9 @@ def main(
         "start_steps": start_steps,
         "exploration_kind": exploration_kind,
         "upload_weights": upload_weights,
+        "freeze_actor_on_task_change": freeze_actor_on_task_change,
+        "freeze_critic_on_task_change": freeze_critic_on_task_change,
+        "transfer_alpha_on_task_change": transfer_alpha_on_task_change,
     }
 
     sac_class = get_sac_class(cl_method)
