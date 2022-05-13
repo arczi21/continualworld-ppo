@@ -36,6 +36,7 @@ class SAC:
         alpha: Union[float, str] = "auto",
         batch_size: int = 128,
         start_steps: int = 10_000,
+        start_steps_second_half: int = 10_000,
         update_after: int = 1000,
         update_every: int = 50,
         num_test_eps_stochastic: int = 10,
@@ -136,6 +137,7 @@ class SAC:
         self.alpha = alpha
         self.batch_size = batch_size
         self.start_steps = start_steps
+        self.start_steps_second_half = start_steps_second_half
         self.update_after = update_after
         self.update_every = update_every
         self.num_test_eps_stochastic = num_test_eps_stochastic
@@ -696,7 +698,10 @@ class SAC:
             # Until start_steps have elapsed, randomly sample actions
             # from a uniform distribution for better exploration. Afterwards,
             # use the learned policy.
-            if current_task_timestep > self.start_steps:
+            start_steps = (self.start_steps_second_half
+                           if current_task_idx >= self.num_tasks // 2
+                           else self.start_steps)
+            if current_task_timestep > start_steps:
                 action = self.get_action(tf.convert_to_tensor(obs))
             else:
                 # Exploration

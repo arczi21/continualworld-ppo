@@ -184,6 +184,11 @@ def cl_parse_args(args=None):
         default=10_000,
     )
     parser.add_argument(
+        "--start_steps_second_half",
+        type=int,
+        default=10_000,
+    )
+    parser.add_argument(
         "--exploration_kind",
         type=str,
         default=None,
