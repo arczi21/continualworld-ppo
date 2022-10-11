@@ -20,7 +20,7 @@ def get_mt50() -> metaworld.MT50:
 MT50 = get_mt50()
 META_WORLD_TIME_HORIZON = 200
 MT50_TASK_NAMES = list(MT50.train_classes)
-MW_OBS_LEN = 12
+MW_OBS_LEN = 39
 MW_ACT_LEN = 4
 
 

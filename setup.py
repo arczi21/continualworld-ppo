@@ -4,10 +4,11 @@ from setuptools import find_packages, setup
 required = [
     "tensorflow>=2.0",
     "mujoco-py<2.1,>=2.0",
-    "metaworld @ git+https://github.com/rlworkgroup/metaworld.git@0875192baaa91c43523708f55866d98eaf3facaf#egg=metaworld",
+    "metaworld @ git+https://github.com/rlworkgroup/metaworld.git@18118a28c06893da0f363786696cc792457b062b#egg=metaworld",
     "pandas",
     "matplotlib",
     "seaborn",
+    "scipy",
 ]
 
 setup(
