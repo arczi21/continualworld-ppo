@@ -81,15 +81,19 @@ def get_single_env(
 
 
 def assert_equal_excluding_goal_dimensions(os1: gym.spaces.Box, os2: gym.spaces.Box) -> None:
-    assert np.array_equal(os1.low[:9], os2.low[:9])
-    assert np.array_equal(os1.high[:9], os2.high[:9])
-    assert np.array_equal(os1.low[12:], os2.low[12:])
-    assert np.array_equal(os1.high[12:], os2.high[12:])
+    # print("Lows", os1.low)
+    # print("Lows", os2.low)
+    # print("Highs", os1.high)
+    # print("Highs", os2.high)
+    assert np.array_equal(os1.low[:36], os2.low[:36])
+    assert np.array_equal(os1.high[:36], os2.high[:36])
+    assert np.array_equal(os1.low[39:], os2.low[39:])
+    assert np.array_equal(os1.high[39:], os2.high[39:])
 
 
 def remove_goal_bounds(obs_space: gym.spaces.Box) -> None:
-    obs_space.low[9:12] = -np.inf
-    obs_space.high[9:12] = np.inf
+    obs_space.low[36:39] = -np.inf
+    obs_space.high[36:39] = np.inf
 
 
 class ContinualLearningEnv(gym.Env):
