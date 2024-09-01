@@ -1,0 +1,14 @@
+contexts:
+  eagle_cl_ppo:
+    account: pl0334-01
+    backend_type: slurm
+    cmd_type: sbatch
+    cpu: 12
+    mem: 50G
+    nodes: 1
+    ntasks: 1
+    partition: standard
+    singularity_container:  -H $PWD:/homeplaceholder -B $TMPDIR:/tmp /mnt/storage_2/project_data/pl0334-01/cw_metaworld2_v2.sif
+    slurm_url: teddy8@eagle.man.poznan.pl
+    storage_dir: /mnt/storage_2/scratch/pl0334-01/teddy8
+    time: 4320
