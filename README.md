@@ -126,7 +126,7 @@ $F=\frac{1}{N}\sum_{i=1}^{N}F_{i}$.
 <p align="justify">The results obtained thus far provide preliminary evidence that on-policy RL algorithms, such as PPO, exhibit distinct behaviors in CL setups compared to off-policy ones. In future work, we aim to identify the precise reasons for these discrepancies and propose CL methods specifically tailored for on-policy algorithms.</p>
 
 ## References
-<p align="justify">Haarnoja, T., Zhou, A., Hartikainen, K., Tucker, G., Ha, S., Tan, J., Kumar, V., Zhu, H., Gupta, A., Abbeel, P. and Levine, S., 2018. Soft actor-critic algorithms and applications. <em>arXiv preprint arXiv:1812.05905</em>.
+<p align="justify">Haarnoja, T., Zhou, A., Hartikainen, K., Tucker, G., Ha, S., Tan, J., Kumar, V., Zhu, H., Gupta, A., Abbeel, P. and Levine, S., 2018. Soft actor-critic algorithms and applications. <em>arXiv preprint arXiv:1812.05905</em>.<br>
 Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu, A.A., Milan, K., Quan, J., Ramalho, T., Grabska-Barwinska, A. and Hassabis, D., 2017. Overcoming catastrophic forgetting in neural networks. <em>Proceedings of the national academy of sciences</em>, 114(13), pp.3521-3526.
 Mallya, A. and Lazebnik, S., 2018. Packnet: Adding multiple tasks to a single network by iterative pruning. In <em>Proceedings of the IEEE conference on Computer Vision and Pattern Recognition</em> (pp. 7765-7773).
 Schulman, J., Wolski, F., Dhariwal, P., Radford, A. and Klimov, O., 2017. Proximal policy optimization algorithms. <em>arXiv preprint arXiv:1707.06347</em>.
