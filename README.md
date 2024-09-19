@@ -127,7 +127,7 @@ $F=\frac{1}{N}\sum_{i=1}^{N}F_{i}$.
 
 ## References
 <p align="justify">Haarnoja, T., Zhou, A., Hartikainen, K., Tucker, G., Ha, S., Tan, J., Kumar, V., Zhu, H., Gupta, A., Abbeel, P. and Levine, S., 2018. Soft actor-critic algorithms and applications. <em>arXiv preprint arXiv:1812.05905</em>.<br>
-Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu, A.A., Milan, K., Quan, J., Ramalho, T., Grabska-Barwinska, A. and Hassabis, D., 2017. Overcoming catastrophic forgetting in neural networks. <em>Proceedings of the national academy of sciences</em>, 114(13), pp.3521-3526.
-Mallya, A. and Lazebnik, S., 2018. Packnet: Adding multiple tasks to a single network by iterative pruning. In <em>Proceedings of the IEEE conference on Computer Vision and Pattern Recognition</em> (pp. 7765-7773).
-Schulman, J., Wolski, F., Dhariwal, P., Radford, A. and Klimov, O., 2017. Proximal policy optimization algorithms. <em>arXiv preprint arXiv:1707.06347</em>.
+Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J., Desjardins, G., Rusu, A.A., Milan, K., Quan, J., Ramalho, T., Grabska-Barwinska, A. and Hassabis, D., 2017. Overcoming catastrophic forgetting in neural networks. <em>Proceedings of the national academy of sciences</em>, 114(13), pp.3521-3526.<br>
+Mallya, A. and Lazebnik, S., 2018. Packnet: Adding multiple tasks to a single network by iterative pruning. In <em>Proceedings of the IEEE conference on Computer Vision and Pattern Recognition</em> (pp. 7765-7773).<br>
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A. and Klimov, O., 2017. Proximal policy optimization algorithms. <em>arXiv preprint arXiv:1707.06347</em>.<br>
 Wołczyk, M., Zając, M., Pascanu, R., Kuciński, Ł. and Miłoś, P., 2021. Continual world: A robotic benchmark for continual reinforcement learning. <em>Advances in Neural Information Processing Systems</em>, 34, pp.28496-28510.</p>
