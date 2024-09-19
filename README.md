@@ -15,6 +15,6 @@ Reinforcement learning is a framework for modeling and solving decision-making p
 ##### Average performance
 
 Let $p_i(t)$ denote the success rate of the model on task $i$ at time $t$, which is defined as the average number of times the agent successfully reaches the goal of task $i$ during the evaluation phase with stochastic policy at time $t$. The average performance is then defined as the mean success rate across all $N$ tasks at a final evaluation time $T$:
-$$
-    \text{AP} = \frac{1}{N} \sum_{i=1}^{N} p_{i}(T).
-$$
+<p align="center">
+AP = $\frac{1}{N} \sum_{i=1}^{N} p_{i}(T)$.
+</p>
