@@ -52,6 +52,7 @@ $F=\frac{1}{N}\sum_{i=1}^{N}F_{i}$.
 
 We perform experiments to compare PPO and SAC in terms of catastrophic forgetting and forward transfer, using a setup similar to the Continual World benchmark ([Wołczyk et al. 2021](https://arxiv.org/abs/2105.10919 "Wołczyk et al. 2021")). For this comparison, we create a sequence of $N=5$ tasks that the agent learns sequentially, without resetting the network parameters when transitioning between tasks. Although each task is evaluated throughout the learning process, it is only trained for $\Delta=10^6$ steps during its specific interval. We apply PPO and SAC with simple fine-tuning and three different CL methods: L2 regularization, elastic weight consolidation (EWC) ([Kirkpatrick et al. 2017](https://arxiv.org/abs/1612.00796 "Kirkpatrick et al. 2017")), and PackNet ([Mallya and Lazebnik 2018](https://arxiv.org/abs/1711.05769 "Mallya and Lazebnik 2018")).
 
+<p align="center">
 <table class="tg"><thead>
   <tr>
     <th class="tg-baqh" rowspan="2">Method</th>
@@ -105,5 +106,11 @@ We perform experiments to compare PPO and SAC in terms of catastrophic forgettin
     <td class="tg-baqh"><span style="font-weight:bold">-0.011</span></td>
   </tr>
 </tbody></table>
+</p>
+
+<p align="center">
+    <img src="https://raw.githubusercontent.com/arczi21/continualworld-ppo/refs/heads/main/examples/results_ppo/ppo_success.jpg" alt>
+    <em>Comparison of the PPO success rate between fine-tuning, L2 regularization, EWC, and PackNet methods, obtained on a sequence of N=5 tasks. Each task is trained on its specific interval for 1 million steps, and its success rate is evaluated throughout the learning process. The vertical dashed lines represent the points where training transitions from one task to the next, indicating the start of a new task.</em>
+</p>
 
 While all CL methods address forgetting in PPO, it is observed that the average performance after training remains markedly inferior to that of SAC. Furthermore, it is noteworthy that PackNet with SAC demonstrates no signs of forgetting, whereas PackNet with PPO displays some degree of forgetting. It is postulated that this phenomenon occurs due to the utilisation of the replay buffer for retraining subsequent to the pruning phase, and the PPO training objective is not optimally aligned with the undertaking of multiple gradient steps on the same data. Finally, it was observed that fine-tuning with PPO did not exhibit any forward transfer, indicating that the knowledge gained from previous tasks was not beneficial when training on the current task. Conversely, higher forward transfer was observed in PPO than in SAC when CL methods were employed.
