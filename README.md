@@ -52,40 +52,57 @@ $F=\frac{1}{N}\sum_{i=1}^{N}F_{i}$.
 
 We perform experiments to compare PPO and SAC in terms of catastrophic forgetting and forward transfer, using a setup similar to the Continual World benchmark ([Wołczyk et al. 2021](https://arxiv.org/abs/2105.10919 "Wołczyk et al. 2021")). For this comparison, we create a sequence of $N=5$ tasks that the agent learns sequentially, without resetting the network parameters when transitioning between tasks. Although each task is evaluated throughout the learning process, it is only trained for $\Delta=10^6$ steps during its specific interval. We apply PPO and SAC with simple fine-tuning and three different CL methods: L2 regularization, elastic weight consolidation (EWC) ([Kirkpatrick et al. 2017](https://arxiv.org/abs/1612.00796 "Kirkpatrick et al. 2017")), and PackNet ([Mallya and Lazebnik 2018](https://arxiv.org/abs/1711.05769 "Mallya and Lazebnik 2018")).
 
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg .tg-baqh{text-align:center;vertical-align:top}
-.tg .tg-0lax{text-align:left;vertical-align:top}
-.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
-</style>
-<table class="tg"><thead>
+<table><thead>
   <tr>
-    <th class="tg-baqh" rowspan="2">Method</th>
-    <th class="tg-0lax" colspan="2">Performance</th>
-    <th class="tg-0lax" colspan="2">Transfer</th>
-    <th class="tg-0lax" colspan="2">Forgetting</th>
+    <th rowspan="2">Method</th>
+    <th colspan="2">Performance ↑</th>
+    <th colspan="2">Transfer ↑</th>
+    <th colspan="2">Forgetting ↓</th>
   </tr>
   <tr>
-    <th class="tg-0pky">PPO</th>
-    <th class="tg-0lax">SAC</th>
-    <th class="tg-0lax">PPO</th>
-    <th class="tg-0lax">SAC</th>
-    <th class="tg-0lax">PPO</th>
-    <th class="tg-0lax">SAC</th>
+    <th>PPO</th>
+    <th>SAC</th>
+    <th>PPO</th>
+    <th>SAC</th>
+    <th>PPO</th>
+    <th>SAC</th>
   </tr></thead>
 <tbody>
   <tr>
-    <td class="tg-0lax">Fine-tuning</td>
-    <td class="tg-0lax">-</td>
-    <td class="tg-0lax">-</td>
-    <td class="tg-0lax">-</td>
-    <td class="tg-0lax">-</td>
-    <td class="tg-0lax">-</td>
-    <td class="tg-0lax">-</td>
+    <td>Fine-tuning</td>
+    <td>0.164</td>
+    <td>**0.212**</td>
+    <td>-0.007</td>
+    <td>**0.458**</td>
+    <td>**0.271**</td>
+    <td>0.764</td>
+  </tr>
+  <tr>
+    <td>L2</td>
+    <td>0.348</td>
+    <td>**0.639**</td>
+    <td>**-0.138**</td>
+    <td>-0.886</td>
+    <td>**-0.016**</td>
+    <td>0.072</td>
+  </tr>
+  <tr>
+    <td>EWC</td>
+    <td>0.375</td>
+    <td>**0.817**</td>
+    <td>**-0.050**</td>
+    <td>-0.127</td>
+    <td>**0.015**</td>
+    <td>0.051</td>
+  </tr>
+  <tr>
+    <td>PackNet</td>
+    <td>0.388</td>
+    <td>**0.842**</td>
+    <td>**-0.053**</td>
+    <td>-0.735</td>
+    <td>0.073</td>
+    <td>**-0.011**</td>
   </tr>
 </tbody>
 </table>
