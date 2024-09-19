@@ -16,5 +16,12 @@ Reinforcement learning is a framework for modeling and solving decision-making p
 
 Let $p_i(t)$ denote the success rate of the model on task $i$ at time $t$, which is defined as the average number of times the agent successfully reaches the goal of task $i$ during the evaluation phase with stochastic policy at time $t$. The average performance is then defined as the mean success rate across all $N$ tasks at a final evaluation time $T$:
 <p align="center">
-AP = $\frac{1}{N} \sum_{i=1}^{N} p_{i}(T)$.
+$\text{AP} = \frac{1}{N} \sum_{i=1}^{N} p_{i}(T)$.
+</p>
+
+##### Forward transfer
+
+We measure the forward transfer of a task as a normalized area between the training curve of a particular task (trained in a sequence) and the training curve of the reference (a single-task experiment). Let $p_{i}^{b}(t) \in\left[0,1\right]$ be the success rate of the model on the reference of task $i$ and $p_i(t)$ be the success rate of the model on task $i$ at time $t$. The forward transfer for the task $i$, denoted by $FT_{i}$, is formally defined as:
+<p align="center">
+$FT_{i}:=\frac{\text{AUC}_{i}-\text{AUC}_{i}^b}{1-\text{AUC}_{i}^b}$,
 </p>
